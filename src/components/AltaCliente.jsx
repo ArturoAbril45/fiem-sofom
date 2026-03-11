@@ -86,8 +86,26 @@ export default function AltaCliente() {
   const [msg,    setMsg]    = useState('');
   const [rutas,  setRutas]  = useState([]);
 
+  // Rutas predefinidas + las que vengan del backend
+  const RUTAS_DEFAULT = [
+    'Apaxco Sucursal-Apaxco',
+    'Tequix Sucursal-tequix',
+    'Huehue sucursal-Huehuetoca',
+    'Temas Sucursal-Temascalapa',
+    'Tizayuca 1 Sucursal-tizayuca1',
+    'OFC-CTRAL OFICINA CENTRAL',
+    '01-sucursa 01-sucursal-tula',
+    '01 Legal',
+    '01 Ajoloapan',
+    '01 APAXCO-2',
+    '02 TEOLOYUCAN',
+  ];
+
   useEffect(() => {
-    fetch(`${API}/api/rutas`).then(r => r.json()).then(d => { if (Array.isArray(d)) setRutas(d); }).catch(() => {});
+    fetch(`${API}/api/rutas`)
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d) && d.length > 0) setRutas(d); })
+      .catch(() => {});
   }, []);
 
   const ch = (n, v) => { setForm(p => ({ ...p, [n]: v })); if (errors[n]) setErrors(p => ({ ...p, [n]: false })); };
@@ -206,7 +224,9 @@ export default function AltaCliente() {
             <Campo label="Ruta vinculación">
               <select value={form.rutaVinculacion} onChange={e => ch('rutaVinculacion', e.target.value)} style={sel(false)}>
                 <option value="">-Elige-</option>
-                {rutas.map(r => <option key={r._id} value={r.clave || r.nombre}>{r.nombre || r.clave}</option>)}
+                {(rutas.length > 0 ? rutas.map(r => r.nombre || r.clave) : RUTAS_DEFAULT).map(nombre => (
+                  <option key={nombre} value={nombre}>{nombre}</option>
+                ))}
               </select>
             </Campo>
             <Campo label="Permitir acceso web de socios">
