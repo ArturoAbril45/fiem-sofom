@@ -79,6 +79,7 @@ export default function ConsultarCliente() {
   const [solicitudes,setSolicitudes]= useState([]);
   const [creditos,   setCreditos]   = useState([]);
   const [cuentas,    setCuentas]    = useState([]);
+  const [totalGlobal,setTotalGlobal]= useState(0);
 
   useEffect(() => { fetchClientes(); }, []);
 
@@ -86,13 +87,18 @@ export default function ConsultarCliente() {
     setCargando(true);
     try {
       let url = `${API}/api/clientes`;
-      const params = [];
-      if (q)   params.push(`busqueda=${encodeURIComponent(q)}`);
-      if (num) params.push(`busqueda=${encodeURIComponent(num)}`);
-      if (params.length) url += '?' + params[0];
+      const termino = q || num;
+      if (termino) url += `?busqueda=${encodeURIComponent(termino)}`;
       const res  = await fetch(url);
       const data = await res.json();
-      setClientes(Array.isArray(data) ? data : []);
+      // Nuevo formato: { total, clientes } o array legacy
+      if (data && data.clientes) {
+        setTotalGlobal(data.total || 0);
+        setClientes(data.clientes);
+      } else {
+        setClientes(Array.isArray(data) ? data : []);
+        setTotalGlobal(Array.isArray(data) ? data.length : 0);
+      }
     } catch(e) { setMsgErr('Error al cargar clientes'); }
     finally { setCargando(false); }
   };
@@ -180,7 +186,7 @@ export default function ConsultarCliente() {
     finally { setProcesando(false); }
   };
 
-  const numTotal = clientes.length;
+  const numTotal = totalGlobal || clientes.length;
   const nombreCompleto = selected ? `${selected.apellidoP||''} ${selected.apellidoM||''} ${selected.nombre||''}`.trim() : '';
 
   // Cálculos financieros
@@ -255,9 +261,9 @@ export default function ConsultarCliente() {
                   </tr>
                 </thead>
                 <tbody>
-                  {clientes.slice(0,20).map((cl,i) => (
+                  {clientes.slice(0,5).map((cl,i) => (
                     <tr key={cl._id} style={{background:i%2===0?'#fff':'#f9f9f9'}}>
-                      <td style={tblCell}>{cl._id?.slice(-6)||i+1}</td>
+                      <td style={tblCell}>{cl.numCliente || clientes.length - i}</td>
                       <td style={tblCell}>{cl.rutaVinculacion||'—'}</td>
                       <td style={{...tblCell,fontWeight:'500',textTransform:'uppercase'}}>{cl.apellidoP} {cl.apellidoM} {cl.nombre}</td>
                       <td style={{...tblCell,width:'100px'}}>
@@ -291,7 +297,7 @@ export default function ConsultarCliente() {
               }
             </div>
             <h2 style={{fontFamily:"'Cormorant Garamond', serif",fontSize:'22px',fontWeight:'700',color:'#0a2d5e',margin:'0 0 2px',textTransform:'uppercase'}}>{nombreCompleto}</h2>
-            <p style={{fontSize:'13px',color:'#4a6a94',margin:'0 0 2px'}}>{selected._id?.slice(-6)}</p>
+            <p style={{fontSize:'13px',color:'#4a6a94',margin:'0 0 2px'}}>{selected.numCliente || ''}</p>
             <p style={{fontSize:'13px',color:'#4a6a94',margin:'0 0 14px'}}>Clave cliente: {selected.rutaVinculacion||'—'}</p>
             {/* Botones acción */}
             <div style={{display:'flex',gap:'8px',justifyContent:'center',flexWrap:'wrap'}}>
@@ -336,7 +342,7 @@ export default function ConsultarCliente() {
                     <Inp val={form.tipoCliente} onChange={v=>ch('tipoCliente',v)} opts={['Titular Fisica','Aval','Titular Moral']}/>
                   </Row>
                   <Row label="Numero único del cliente" width="180px">
-                    <Inp val={selected._id?.slice(-6)} onChange={()=>{}} readOnly width="120px"/>
+                    <Inp val={String(selected.numCliente || '')} onChange={()=>{}} readOnly width="120px"/>
                   </Row>
                   <Row label="Ruta vinculacion" width="180px">
                     <Inp val={form.rutaVinculacion} onChange={v=>ch('rutaVinculacion',v)} opts={RUTAS_DEFAULT}/>
