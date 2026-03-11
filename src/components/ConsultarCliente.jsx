@@ -61,7 +61,7 @@ const Grid = ({ children, min='200px' }) => (
 
 // ── Miniatura foto con zoom ──
 function Foto({ src, label, onZoom }) {
-  if (!src) return null;
+  if (!src || src.length < 10) return null;
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'6px' }}>
       <div onClick={()=>onZoom(src, label)} style={{ width:'90px', height:'90px', borderRadius:'10px', overflow:'hidden', cursor:'zoom-in', border:'2px solid #dceaf8' }}>
@@ -134,7 +134,17 @@ export default function ConsultarCliente() {
     finally { setCargando(false); }
   };
 
-  const iniciarEdicion = () => { setFormEdit({ ...selected }); setEditando(true); };
+  const iniciarEdicion = () => {
+    const base = { ...selected };
+    // Garantizar subobjetos para evitar errores en edición
+    base.conyuge        = base.conyuge        || {};
+    base.gastos         = base.gastos         || {};
+    base.documentos     = base.documentos     || {};
+    base.domicilioLaboral = base.domicilioLaboral || {};
+    base.estudioSocioeconomico = base.estudioSocioeconomico || {};
+    setFormEdit(base);
+    setEditando(true);
+  };
   const cancelarEdicion = () => { setEditando(false); setFormEdit({}); };
 
   const ch = (path, val) => {
@@ -393,12 +403,12 @@ export default function ConsultarCliente() {
               <Dato label="Disponible mensual" value={fmtMoney(selected.totalDisponible)}/>
               {selected.estudioSocioeconomico?.tipoVivienda && <Dato label="Tipo de vivienda" value={selected.estudioSocioeconomico.tipoVivienda}/>}
             </Grid>
-            {selected.gastos && Object.values(selected.gastos).some(v=>v>0) && (
+            {selected.gastos && Object.values(selected.gastos).some(v=>Number(v)>0) && (
               <div style={{ marginTop:'14px' }}>
                 <div style={{ fontSize:'11px', fontWeight:'700', color:'#90aac8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'10px' }}>Desglose de gastos</div>
                 <Grid min="140px">
                   {[['Alimento','alimento'],['Luz','luz'],['Teléfono','telefono'],['Transporte','transporte'],['Renta','renta'],['Inversión','inversion'],['Créditos','creditos'],['Otros','otros']].map(([l,k])=>
-                    selected.gastos[k]>0 ? <Dato key={k} label={l} value={fmtMoney(selected.gastos[k])}/> : null
+                    Number(selected.gastos[k])>0 ? <Dato key={k} label={l} value={fmtMoney(selected.gastos[k])}/> : null
                   )}
                 </Grid>
               </div>
@@ -445,10 +455,10 @@ export default function ConsultarCliente() {
           )}
 
           {/* ── Referencias ── */}
-          {selected.referencias?.length > 0 && (
+          {selected.referencias?.filter(r => r.nombre)?.length > 0 && (
             <Sec icon={Users} title="Referencias personales" open={false}>
               <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-                {selected.referencias.map((r,i) => (
+                {selected.referencias.filter(r => r.nombre).map((r,i) => (
                   <div key={i} style={{ padding:'12px 16px', background:'#f8fbff', borderRadius:'10px', border:'1px solid #dceaf8' }}>
                     <div style={{ fontSize:'11px', fontWeight:'700', color:'#0e50a0', textTransform:'uppercase', marginBottom:'8px' }}>Referencia {i+1}</div>
                     <Grid min="180px">
