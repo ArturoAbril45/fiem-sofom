@@ -42,6 +42,8 @@ export default function AperturarAhorro() {
     return Object.keys(errs).length === 0;
   };
 
+  const cerrarDrop = () => setTimeout(() => setShowDrop(false), 150);
+
   const handleSave = async () => {
     if (!validate()) return;
     setEstado('loading');
@@ -65,8 +67,8 @@ export default function AperturarAhorro() {
 
   const inp = (err) => ({ border: `1.5px solid ${err ? '#ef4444' : '#dceaf8'}`, borderRadius: '9px', padding: '10px 13px', fontSize: '13px', fontFamily: 'DM Sans, sans-serif', color: '#1a3d6e', outline: 'none', width: '100%', background: '#fafcff', boxSizing: 'border-box' });
   const lbl = (n) => <label style={{ fontSize: '11px', fontWeight: '600', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>{n}</label>;
-  const section = (titulo, Icon, children) => (
-    <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #dceaf8', boxShadow: '0 2px 12px rgba(14,80,160,0.05)', marginBottom: '20px', overflow: 'hidden' }}>
+  const section = (titulo, Icon, children, noOverflow = false) => (
+    <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #dceaf8', boxShadow: '0 2px 12px rgba(14,80,160,0.05)', marginBottom: '20px', overflow: noOverflow ? 'visible' : 'hidden' }}>
       <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f6ff', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <div style={{ width: '32px', height: '32px', background: '#e8f2fc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon size={16} color="#0e50a0" /></div>
         <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>{titulo}</span>
@@ -86,10 +88,10 @@ export default function AperturarAhorro() {
             {lbl('Buscar cliente *')}
             <div style={{ position: 'relative' }}>
               <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#90aac8', pointerEvents: 'none' }} />
-              <input value={busCliente} onChange={e => { setBusCliente(e.target.value); setShowDrop(true); }} onFocus={() => setShowDrop(true)} placeholder="Nombre o CURP..." style={{ ...inp(errors.clienteNombre), paddingLeft: '36px' }} />
+              <input value={busCliente} onChange={e => { setBusCliente(e.target.value); setForm(p => ({ ...p, clienteNombre: e.target.value })); setShowDrop(true); }} onFocus={() => setShowDrop(true)} placeholder="Nombre o CURP..." style={{ ...inp(errors.clienteNombre), paddingLeft: '36px' }} />
             </div>
             {showDrop && clientesFiltrados.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #dceaf8', borderRadius: '10px', boxShadow: '0 8px 24px rgba(14,80,160,0.12)', zIndex: 100, marginTop: '4px' }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #dceaf8', borderRadius: '10px', boxShadow: '0 8px 24px rgba(14,80,160,0.12)', zIndex: 999, marginTop: '4px', maxHeight: '220px', overflowY: 'auto' }}>
                 {clientesFiltrados.map(c => (
                   <div key={c._id} onClick={() => seleccionarCliente(c)} style={{ padding: '10px 14px', cursor: 'pointer', fontSize: '13px', color: '#0a2d5e', borderBottom: '1px solid #f0f6ff' }}
                     onMouseEnter={e => e.currentTarget.style.background='#f4f8fd'} onMouseLeave={e => e.currentTarget.style.background='#fff'}>
@@ -102,7 +104,7 @@ export default function AperturarAhorro() {
           </div>
           <div>{lbl('CURP')}<input value={form.clienteCurp} readOnly style={{ ...inp(false), background: '#f4f8fd', color: '#90aac8' }} /></div>
         </div>
-      )}
+      , true)}
 
       {section('Datos de la cuenta', PiggyBank,
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
