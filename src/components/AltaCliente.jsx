@@ -1,41 +1,43 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
-  User, FileText, MapPin, Phone, Mail, Save, RotateCcw,
-  CheckCircle, AlertCircle, Loader, Camera, Heart, Users, Upload, X
+  User, FileText, MapPin, Phone, Save, RotateCcw,
+  CheckCircle, AlertCircle, Loader, Camera, Heart, Users, Upload, X,
+  Briefcase, DollarSign, ChevronRight
 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://fiem-backend-production.up.railway.app';
 
-const INITIAL = {
-  nombre: '', apellidoPaterno: '', apellidoMaterno: '',
-  fechaNacimiento: '', genero: '', estadoCivil: '',
-  curp: '', rfc: '', ine: '',
-  telefono: '', celular: '', correo: '',
-  calle: '', numExt: '', numInt: '', colonia: '',
-  municipio: '', estado: '', cp: '',
-  ocupacion: '', ingresoMensual: '',
-  // Cónyuge
-  conyuge_nombre: '', conyuge_apellidoP: '', conyuge_apellidoM: '',
-  conyuge_curp: '', conyuge_telefono: '', conyuge_ocupacion: '', conyuge_ingreso: '',
-  // Referencias
-  ref1_nombre: '', ref1_parentesco: '', ref1_telefono: '', ref1_calle: '', ref1_colonia: '', ref1_municipio: '',
-  ref2_nombre: '', ref2_parentesco: '', ref2_telefono: '', ref2_calle: '', ref2_colonia: '', ref2_municipio: '',
-  ref3_nombre: '', ref3_parentesco: '', ref3_telefono: '', ref3_calle: '', ref3_colonia: '', ref3_municipio: '',
-};
-
 const ESTADOS_MX = [
   'Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua',
-  'Ciudad de Mexico','Coahuila','Colima','Durango','Guanajuato','Guerrero','Hidalgo','Jalisco',
-  'Mexico','Michoacan','Morelos','Nayarit','Nuevo Leon','Oaxaca','Puebla','Queretaro',
-  'Quintana Roo','San Luis Potosi','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala',
-  'Veracruz','Yucatan','Zacatecas'
+  'Ciudad de Mexico','Coahuila de Zaragoza','Colima','Distrito Federal','Durango','Guanajuato',
+  'Guerrero','Hidalgo','Jalisco','Mexico','Michoacan','Morelos','Nayarit','Nuevo Leon',
+  'Oaxaca','Puebla','Queretaro','Quintana Roo','San Luis Potosi','Sinaloa','Sonora',
+  'Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatan','Zacatecas'
 ];
 
 const REQUERIDOS = ['nombre', 'apellidoPaterno', 'fechaNacimiento', 'curp', 'celular'];
 
-// Componente de subida de foto
-function FotoUpload({ label, value, onChange }) {
+const INITIAL = {
+  tipoCliente: '', rutaVinculacion: '', accesoWeb: '',
+  nombre: '', apellidoPaterno: '', apellidoMaterno: '',
+  fechaNacimiento: '', genero: '', estadoCivil: '',
+  lugarNacimiento: '', numDependientes: '',
+  curp: '', rfc: '', ine: '',
+  telefonoOficina: '', telefonoParticular: '', celular: '', correo: '',
+  conyuge_nombre: '', conyuge_telefono: '', conyuge_trabajo: '', conyuge_direccionTrabajo: '',
+  conyuge_apellidoP: '', conyuge_apellidoM: '', conyuge_curp: '', conyuge_ocupacion: '', conyuge_ingreso: '',
+  ref1_nombre: '', ref1_telefono: '', ref1_domicilio: '',
+  ref2_nombre: '', ref2_telefono: '', ref2_domicilio: '',
+  ref3_nombre: '', ref3_telefono: '', ref3_domicilio: '',
+  cp: '', calle: '', numExt: '', numInt: '',
+  colonia: '', municipio: '', estado: '',
+  entreCalles1: '', entreCalles2: '', referenciaUbicacion: '', referenciaAdicional: '',
+  ingresoMensual: '', egresos: '', otrosIngresos: '', patrimonio: '',
+  empresa: '', ocupacion: '', direccionLaboral: '', telefonoLaboral: '', antiguedad: '', tipoContrato: '',
+};
+
+function FotoUpload({ label, value, onChange, size = 110 }) {
   const ref = useRef();
   const handleFile = (e) => {
     const file = e.target.files[0];
@@ -45,57 +47,50 @@ function FotoUpload({ label, value, onChange }) {
     reader.readAsDataURL(file);
   };
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-      <div
-        onClick={() => ref.current.click()}
-        style={{
-          width: '120px', height: '120px', borderRadius: '12px',
-          border: `2px dashed ${value ? '#0e50a0' : '#dceaf8'}`,
-          background: value ? 'transparent' : '#f4f9ff',
-          cursor: 'pointer', overflow: 'hidden', position: 'relative',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'border-color 0.2s',
-        }}
-      >
-        {value ? (
-          <img src={value} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{ textAlign: 'center', color: '#90aac8' }}>
-            <Camera size={28} />
-            <div style={{ fontSize: '11px', marginTop: '6px', fontWeight: '600' }}>Subir foto</div>
-          </div>
-        )}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+      <div onClick={() => ref.current.click()} style={{ width: size, height: size, borderRadius: '10px', border: `2px dashed ${value ? '#0e50a0' : '#dceaf8'}`, background: value ? 'transparent' : '#f4f9ff', cursor: 'pointer', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {value
+          ? <img src={value} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <div style={{ textAlign: 'center', color: '#90aac8' }}><Camera size={22} /><div style={{ fontSize: '10px', marginTop: '4px', fontWeight: '600' }}>Subir foto</div></div>
+        }
         {value && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onChange(''); }}
-            style={{
-              position: 'absolute', top: '4px', right: '4px',
-              background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%',
-              width: '22px', height: '22px', cursor: 'pointer', color: '#fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <X size={12} />
+          <button onClick={e => { e.stopPropagation(); onChange(''); }} style={{ position: 'absolute', top: '3px', right: '3px', background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={11} />
           </button>
         )}
       </div>
       <input ref={ref} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
-      <span style={{ fontSize: '11px', fontWeight: '600', color: '#4a6a94', textAlign: 'center' }}>{label}</span>
+      <span style={{ fontSize: '10px', fontWeight: '600', color: '#4a6a94', textAlign: 'center', maxWidth: size }}>{label}</span>
+    </div>
+  );
+}
+
+function Campo({ label, children, required, error }) {
+  return (
+    <div>
+      <label style={{ fontSize: '11px', fontWeight: '600', color: error ? '#ef4444' : '#90aac8', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: '5px' }}>
+        {label}{required && <span style={{ color: '#ef4444' }}> *</span>}
+      </label>
+      {children}
+      {error && <span style={{ color: '#ef4444', fontSize: '10px' }}>Campo requerido</span>}
     </div>
   );
 }
 
 export default function AltaCliente() {
-  const [form,    setForm]    = useState(INITIAL);
-  const [fotos,   setFotos]   = useState({ cliente: '', casa: '', negocio: '' });
-  const [errors,  setErrors]  = useState({});
-  const [estado,  setEstado]  = useState(null);
-  const [mensaje, setMensaje] = useState('');
+  const [tab,    setTab]    = useState(0);
+  const [form,   setForm]   = useState(INITIAL);
+  const [fotos,  setFotos]  = useState({ cliente: '', casa: '', negocio: '', conyuge: '', ine: '', comprobante: '' });
+  const [errors, setErrors] = useState({});
+  const [estado, setEstado] = useState(null);
+  const [msg,    setMsg]    = useState('');
+  const [rutas,  setRutas]  = useState([]);
 
-  const change = (name, val) => {
-    setForm(p => ({ ...p, [name]: val }));
-    if (errors[name]) setErrors(p => ({ ...p, [name]: false }));
-  };
+  useEffect(() => {
+    fetch(`${API}/api/rutas`).then(r => r.json()).then(d => { if (Array.isArray(d)) setRutas(d); }).catch(() => {});
+  }, []);
+
+  const ch = (n, v) => { setForm(p => ({ ...p, [n]: v })); if (errors[n]) setErrors(p => ({ ...p, [n]: false })); };
 
   const validate = () => {
     const errs = {};
@@ -105,302 +100,294 @@ export default function AltaCliente() {
   };
 
   const handleSave = async () => {
-    if (!validate()) return;
+    if (!validate()) { setTab(0); return; }
     setEstado('loading');
     try {
+      const esCasado = form.estadoCivil === 'Casado(a)' || form.estadoCivil === 'Union libre';
       const payload = {
-        nombre:      form.nombre,
-        apellidoP:   form.apellidoPaterno,
-        apellidoM:   form.apellidoMaterno,
-        curp:        form.curp.toUpperCase(),
-        rfc:         form.rfc.toUpperCase(),
-        fechaNac:    form.fechaNacimiento,
-        sexo:        form.genero,
-        estadoCivil: form.estadoCivil,
-        telefono:    form.telefono,
-        celular:     form.celular,
-        correo:      form.correo,
-        calle:       form.calle,
-        colonia:     form.colonia,
-        municipio:   form.municipio,
-        estado:      form.estado,
-        cp:          form.cp,
-        ocupacion:   form.ocupacion,
-        ingresoMensual: form.ingresoMensual,
-        estatus:     'Activo',
-        conyuge: form.estadoCivil === 'Casado(a)' || form.estadoCivil === 'Union libre' ? {
-          nombre:    form.conyuge_nombre,
-          apellidoP: form.conyuge_apellidoP,
-          apellidoM: form.conyuge_apellidoM,
-          curp:      form.conyuge_curp,
-          telefono:  form.conyuge_telefono,
-          ocupacion: form.conyuge_ocupacion,
-          ingreso:   form.conyuge_ingreso,
+        tipoCliente: form.tipoCliente, rutaVinculacion: form.rutaVinculacion, accesoWeb: form.accesoWeb,
+        nombre: form.nombre, apellidoP: form.apellidoPaterno, apellidoM: form.apellidoMaterno,
+        curp: form.curp.toUpperCase(), rfc: form.rfc.toUpperCase(), ine: form.ine,
+        fechaNac: form.fechaNacimiento, sexo: form.genero, estadoCivil: form.estadoCivil,
+        lugarNacimiento: form.lugarNacimiento, numDependientes: form.numDependientes,
+        telefono: form.telefonoParticular, telefonoOficina: form.telefonoOficina,
+        celular: form.celular, correo: form.correo,
+        calle: form.calle, colonia: form.colonia, municipio: form.municipio,
+        estado: form.estado, cp: form.cp, numExt: form.numExt, numInt: form.numInt,
+        entreCalles1: form.entreCalles1, entreCalles2: form.entreCalles2,
+        referenciaUbicacion: form.referenciaUbicacion, referenciaAdicional: form.referenciaAdicional,
+        ocupacion: form.ocupacion, empresa: form.empresa,
+        ingresoMensual: form.ingresoMensual, egresos: form.egresos,
+        otrosIngresos: form.otrosIngresos, patrimonio: form.patrimonio,
+        direccionLaboral: form.direccionLaboral, telefonoLaboral: form.telefonoLaboral,
+        antiguedad: form.antiguedad, tipoContrato: form.tipoContrato,
+        estatus: 'Activo',
+        conyuge: esCasado ? {
+          nombre: form.conyuge_nombre, apellidoP: form.conyuge_apellidoP, apellidoM: form.conyuge_apellidoM,
+          curp: form.conyuge_curp, telefono: form.conyuge_telefono,
+          trabajo: form.conyuge_trabajo, direccionTrabajo: form.conyuge_direccionTrabajo,
+          ocupacion: form.conyuge_ocupacion, ingreso: form.conyuge_ingreso,
         } : null,
         referencias: [
-          { nombre: form.ref1_nombre, parentesco: form.ref1_parentesco, telefono: form.ref1_telefono, calle: form.ref1_calle, colonia: form.ref1_colonia, municipio: form.ref1_municipio },
-          { nombre: form.ref2_nombre, parentesco: form.ref2_parentesco, telefono: form.ref2_telefono, calle: form.ref2_calle, colonia: form.ref2_colonia, municipio: form.ref2_municipio },
-          { nombre: form.ref3_nombre, parentesco: form.ref3_parentesco, telefono: form.ref3_telefono, calle: form.ref3_calle, colonia: form.ref3_colonia, municipio: form.ref3_municipio },
+          { nombre: form.ref1_nombre, telefono: form.ref1_telefono, domicilio: form.ref1_domicilio },
+          { nombre: form.ref2_nombre, telefono: form.ref2_telefono, domicilio: form.ref2_domicilio },
+          { nombre: form.ref3_nombre, telefono: form.ref3_telefono, domicilio: form.ref3_domicilio },
         ].filter(r => r.nombre),
-        fotos: {
-          cliente: fotos.cliente,
-          casa:    fotos.casa,
-          negocio: fotos.negocio,
-        },
+        fotos,
       };
-
       const res = await fetch(`${API}/api/clientes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al guardar');
-      setEstado('ok');
-      setMensaje(`Cliente ${form.nombre} ${form.apellidoPaterno} registrado correctamente.`);
-      setTimeout(() => { setForm(INITIAL); setFotos({ cliente: '', casa: '', negocio: '' }); setEstado(null); setMensaje(''); }, 3500);
+      setEstado('ok'); setMsg(`Cliente ${form.nombre} ${form.apellidoPaterno} registrado correctamente.`);
+      setTimeout(() => { setForm(INITIAL); setFotos({ cliente: '', casa: '', negocio: '', conyuge: '', ine: '', comprobante: '' }); setEstado(null); setMsg(''); setTab(0); }, 3500);
     } catch (e) {
-      setEstado('error');
-      setMensaje(e.message.includes('duplicate') ? 'Ya existe un cliente con ese CURP.' : e.message);
+      setEstado('error'); setMsg(e.message.includes('duplicate') ? 'Ya existe un cliente con ese CURP.' : e.message);
       setTimeout(() => setEstado(null), 4000);
     }
   };
 
-  const handleReset = () => { setForm(INITIAL); setFotos({ cliente: '', casa: '', negocio: '' }); setErrors({}); setEstado(null); setMensaje(''); };
+  const reset = () => { setForm(INITIAL); setFotos({ cliente: '', casa: '', negocio: '', conyuge: '', ine: '', comprobante: '' }); setErrors({}); setEstado(null); setMsg(''); setTab(0); };
 
-  const inp = (err) => ({
-    border: `1.5px solid ${err ? '#ef4444' : '#dceaf8'}`,
-    borderRadius: '9px', padding: '10px 13px', fontSize: '13px',
-    fontFamily: 'DM Sans, sans-serif', color: '#1a3d6e', outline: 'none',
-    width: '100%', background: '#fafcff', boxSizing: 'border-box',
-  });
+  const inp = (err) => ({ border: `1.5px solid ${err ? '#ef4444' : '#dceaf8'}`, borderRadius: '9px', padding: '9px 12px', fontSize: '13px', fontFamily: 'DM Sans, sans-serif', color: '#1a3d6e', outline: 'none', width: '100%', background: '#fafcff', boxSizing: 'border-box' });
+  const sel = (err) => ({ ...inp(err), cursor: 'pointer' });
+  const esCasado = form.estadoCivil === 'Casado(a)' || form.estadoCivil === 'Union libre';
 
-  const cardStyle = {
-    background: '#fff', borderRadius: '16px', border: '1px solid #dceaf8',
-    boxShadow: '0 2px 12px rgba(14,80,160,0.05)', marginBottom: '20px', overflow: 'visible',
-  };
-
-  const headerStyle = {
-    padding: '16px 24px', borderBottom: '1px solid #f0f6ff',
-    display: 'flex', alignItems: 'center', gap: '10px',
-  };
-
-  const bodyStyle = {
-    padding: '22px 24px',
-    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px',
-  };
-
-  const renderCampo = (label, name, type, opts, required) => (
-    <div key={name}>
-      <label style={{ fontSize: '11px', fontWeight: '600', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>
-        {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
-      </label>
-      {type === 'select' ? (
-        <select value={form[name]} onChange={e => change(name, e.target.value)} style={{ ...inp(errors[name]), cursor: 'pointer' }}>
-          <option value="">Seleccionar...</option>
-          {opts.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-      ) : (
-        <input type={type || 'text'} value={form[name]} onChange={e => change(name, e.target.value)} placeholder={label} style={inp(errors[name])} />
-      )}
-      {errors[name] && <span style={{ color: '#ef4444', fontSize: '11px' }}>Campo requerido</span>}
+  const Card = ({ titulo, icon: Icon, iconBg = '#e8f2fc', iconColor = '#0e50a0', children }) => (
+    <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #dceaf8', boxShadow: '0 2px 10px rgba(14,80,160,0.05)', marginBottom: '18px' }}>
+      <div style={{ padding: '14px 22px', borderBottom: '1px solid #f0f6ff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ width: '30px', height: '30px', background: iconBg, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon size={15} color={iconColor} /></div>
+        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '16px', fontWeight: '700', color: '#0a2d5e' }}>{titulo}</span>
+      </div>
+      <div style={{ padding: '18px 22px' }}>{children}</div>
     </div>
   );
 
-  const mostrarConyuge = form.estadoCivil === 'Casado(a)' || form.estadoCivil === 'Union libre';
+  const Grid = ({ children }) => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>{children}</div>
+  );
+
+  const TABS = ['Información general', 'Documentación digital', 'Información financiera', 'Información laboral'];
 
   return (
-    <div style={{ maxWidth: '820px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '860px', margin: '0 auto' }}>
 
-      {/* Notificaciones */}
-      {estado === 'ok' && (
-        <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: '12px', padding: '14px 18px', marginBottom: '20px', color: '#166534', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <CheckCircle size={16} /> {mensaje}
-        </div>
-      )}
-      {estado === 'error' && (
-        <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '12px', padding: '14px 18px', marginBottom: '20px', color: '#dc2626', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <AlertCircle size={16} /> {mensaje}
-        </div>
-      )}
+      {estado === 'ok' && <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: '12px', padding: '13px 18px', marginBottom: '18px', color: '#166534', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}><CheckCircle size={16} />{msg}</div>}
+      {estado === 'error' && <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '12px', padding: '13px 18px', marginBottom: '18px', color: '#dc2626', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}><AlertCircle size={16} />{msg}</div>}
 
-      {/* DATOS PERSONALES */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
-          <div style={{ width: '32px', height: '32px', background: '#e8f2fc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <User size={16} color="#0e50a0" />
-          </div>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>Datos personales</span>
+      {/* PESTAÑAS */}
+      <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #dceaf8', boxShadow: '0 2px 10px rgba(14,80,160,0.05)', marginBottom: '20px', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', borderBottom: '2px solid #f0f6ff', overflowX: 'auto' }}>
+          {TABS.map((t, i) => (
+            <button key={t} onClick={() => setTab(i)} style={{ padding: '13px 20px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px', fontWeight: tab === i ? '700' : '500', color: tab === i ? '#0e50a0' : '#90aac8', background: tab === i ? '#f0f7ff' : 'transparent', borderBottom: tab === i ? '2px solid #0e50a0' : '2px solid transparent', marginBottom: '-2px', fontFamily: 'DM Sans, sans-serif', transition: 'all 0.15s' }}>
+              {t}
+            </button>
+          ))}
         </div>
-        <div style={bodyStyle}>
-          {renderCampo('Nombre(s)', 'nombre', 'text', null, true)}
-          {renderCampo('Apellido paterno', 'apellidoPaterno', 'text', null, true)}
-          {renderCampo('Apellido materno', 'apellidoMaterno', 'text', null, false)}
-          {renderCampo('Fecha de nacimiento', 'fechaNacimiento', 'date', null, true)}
-          {renderCampo('Genero', 'genero', 'select', ['Masculino', 'Femenino'], false)}
-          {renderCampo('Estado civil', 'estadoCivil', 'select', ['Soltero(a)', 'Casado(a)', 'Union libre', 'Divorciado(a)', 'Viudo(a)'], false)}
+        <div style={{ padding: '8px 22px', background: '#f8fbff' }}>
+          <p style={{ margin: 0, fontSize: '12px', color: '#90aac8' }}>Rellena la información en cada pestaña. Al finalizar pulsa <strong style={{ color: '#0e50a0' }}>Guardar cliente</strong>.</p>
         </div>
       </div>
 
-      {/* IDENTIFICACION */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
-          <div style={{ width: '32px', height: '32px', background: '#e8f2fc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <FileText size={16} color="#0e50a0" />
-          </div>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>Identificacion</span>
-        </div>
-        <div style={bodyStyle}>
-          {renderCampo('CURP', 'curp', 'text', null, true)}
-          {renderCampo('RFC', 'rfc', 'text', null, false)}
-          {renderCampo('No. INE/IFE', 'ine', 'text', null, false)}
-        </div>
-      </div>
+      {/* ── TAB 0: INFORMACIÓN GENERAL ── */}
+      {tab === 0 && <>
+        <Card titulo="Clasificación del cliente" icon={User}>
+          <Grid>
+            <Campo label="Tipo de cliente">
+              <select value={form.tipoCliente} onChange={e => ch('tipoCliente', e.target.value)} style={sel(false)}>
+                <option value="">Selecciona una opción</option>
+                <option value="Titular Fisica">Titular Física (Persona física)</option>
+                <option value="Aval">Aval</option>
+                <option value="Titular Moral">Titular Moral (Persona moral)</option>
+              </select>
+            </Campo>
+            <Campo label="Ruta vinculación">
+              <select value={form.rutaVinculacion} onChange={e => ch('rutaVinculacion', e.target.value)} style={sel(false)}>
+                <option value="">-Elige-</option>
+                {rutas.map(r => <option key={r._id} value={r.clave || r.nombre}>{r.nombre || r.clave}</option>)}
+              </select>
+            </Campo>
+            <Campo label="Permitir acceso web de socios">
+              <select value={form.accesoWeb} onChange={e => ch('accesoWeb', e.target.value)} style={sel(false)}>
+                <option value="">-Elige-</option>
+                <option value="SI">Sí</option>
+                <option value="NO">No</option>
+              </select>
+            </Campo>
+          </Grid>
+        </Card>
 
-      {/* CONTACTO */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
-          <div style={{ width: '32px', height: '32px', background: '#e8f2fc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Phone size={16} color="#0e50a0" />
-          </div>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>Contacto</span>
-        </div>
-        <div style={bodyStyle}>
-          {renderCampo('Telefono fijo', 'telefono', 'tel', null, false)}
-          {renderCampo('Celular', 'celular', 'tel', null, true)}
-          {renderCampo('Correo electronico', 'correo', 'email', null, false)}
-        </div>
-      </div>
+        <Card titulo="Datos personales" icon={User}>
+          <Grid>
+            <Campo label="Apellido paterno" required error={errors.apellidoPaterno}><input value={form.apellidoPaterno} onChange={e => ch('apellidoPaterno', e.target.value)} style={inp(errors.apellidoPaterno)} placeholder="Apellido paterno" /></Campo>
+            <Campo label="Apellido materno"><input value={form.apellidoMaterno} onChange={e => ch('apellidoMaterno', e.target.value)} style={inp(false)} placeholder="Apellido materno" /></Campo>
+            <Campo label="Nombre(s)" required error={errors.nombre}><input value={form.nombre} onChange={e => ch('nombre', e.target.value)} style={inp(errors.nombre)} placeholder="Nombre(s)" /></Campo>
+            <Campo label="Teléfono particular"><input type="tel" value={form.telefonoParticular} onChange={e => ch('telefonoParticular', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Teléfono oficina"><input type="tel" value={form.telefonoOficina} onChange={e => ch('telefonoOficina', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Teléfono celular" required error={errors.celular}><input type="tel" value={form.celular} onChange={e => ch('celular', e.target.value)} style={inp(errors.celular)} /></Campo>
+            <Campo label="Fecha de nacimiento" required error={errors.fechaNacimiento}><input type="date" value={form.fechaNacimiento} onChange={e => ch('fechaNacimiento', e.target.value)} style={inp(errors.fechaNacimiento)} /></Campo>
+            <Campo label="Lugar de nacimiento">
+              <select value={form.lugarNacimiento} onChange={e => ch('lugarNacimiento', e.target.value)} style={sel(false)}>
+                <option value="">-Elige-</option>
+                {ESTADOS_MX.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </Campo>
+            <Campo label="Sexo">
+              <select value={form.genero} onChange={e => ch('genero', e.target.value)} style={sel(false)}>
+                <option value="">-Elige-</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Femenino">Femenino</option>
+              </select>
+            </Campo>
+            <Campo label="Estado civil">
+              <select value={form.estadoCivil} onChange={e => ch('estadoCivil', e.target.value)} style={sel(false)}>
+                <option value="">-Elige-</option>
+                <option value="Soltero(a)">Soltero(a)</option>
+                <option value="Casado(a)">Casado(a)</option>
+                <option value="Union libre">Unión libre</option>
+                <option value="Divorciado(a)">Divorciado(a)</option>
+                <option value="Viudo(a)">Viudo(a)</option>
+              </select>
+            </Campo>
+            <Campo label="RFC"><input value={form.rfc} onChange={e => ch('rfc', e.target.value.toUpperCase())} style={inp(false)} placeholder="Ingrese su RFC" /></Campo>
+            <Campo label="Correo electrónico"><input type="email" value={form.correo} onChange={e => ch('correo', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="No. dependientes económicos"><input type="number" value={form.numDependientes} onChange={e => ch('numDependientes', e.target.value)} style={inp(false)} min="0" /></Campo>
+            <Campo label="CURP" required error={errors.curp}><input value={form.curp} onChange={e => ch('curp', e.target.value.toUpperCase())} style={inp(errors.curp)} placeholder="Ingrese su CURP" /></Campo>
+            <Campo label="No. INE/IFE"><input value={form.ine} onChange={e => ch('ine', e.target.value)} style={inp(false)} /></Campo>
+          </Grid>
+        </Card>
 
-      {/* DOMICILIO */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
-          <div style={{ width: '32px', height: '32px', background: '#e8f2fc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <MapPin size={16} color="#0e50a0" />
-          </div>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>Domicilio</span>
-        </div>
-        <div style={bodyStyle}>
-          {renderCampo('Calle', 'calle', 'text')}
-          {renderCampo('No. exterior', 'numExt', 'text')}
-          {renderCampo('No. interior', 'numInt', 'text')}
-          {renderCampo('Colonia', 'colonia', 'text')}
-          {renderCampo('Municipio / Alcaldia', 'municipio', 'text')}
-          {renderCampo('Estado', 'estado', 'select', ESTADOS_MX)}
-          {renderCampo('Codigo postal', 'cp', 'text')}
-        </div>
-      </div>
-
-      {/* INFORMACION ECONOMICA */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
-          <div style={{ width: '32px', height: '32px', background: '#e8f2fc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Mail size={16} color="#0e50a0" />
-          </div>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>Informacion economica</span>
-        </div>
-        <div style={bodyStyle}>
-          {renderCampo('Ocupacion', 'ocupacion', 'text')}
-          {renderCampo('Ingreso mensual aproximado', 'ingresoMensual', 'number')}
-        </div>
-      </div>
-
-      {/* DATOS DEL CONYUGE — solo si es casado o union libre */}
-      {mostrarConyuge && (
-        <div style={cardStyle}>
-          <div style={headerStyle}>
-            <div style={{ width: '32px', height: '32px', background: '#fce8f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Heart size={16} color="#be185d" />
-            </div>
-            <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>Datos del conyuge</span>
-          </div>
-          <div style={bodyStyle}>
-            {[
-              { label: 'Nombre(s)',        name: 'conyuge_nombre',    type: 'text' },
-              { label: 'Apellido paterno', name: 'conyuge_apellidoP', type: 'text' },
-              { label: 'Apellido materno', name: 'conyuge_apellidoM', type: 'text' },
-              { label: 'CURP',             name: 'conyuge_curp',      type: 'text' },
-              { label: 'Telefono',         name: 'conyuge_telefono',  type: 'tel' },
-              { label: 'Ocupacion',        name: 'conyuge_ocupacion', type: 'text' },
-              { label: 'Ingreso mensual',  name: 'conyuge_ingreso',   type: 'number' },
-            ].map(({ label, name, type }) => renderCampo(label, name, type))}
-          </div>
-        </div>
-      )}
-
-      {/* FOTOGRAFIAS */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
-          <div style={{ width: '32px', height: '32px', background: '#e8f2fc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Camera size={16} color="#0e50a0" />
-          </div>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>Fotografias</span>
-        </div>
-        <div style={{ padding: '24px', display: 'flex', gap: '32px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          <FotoUpload label="Foto del cliente"  value={fotos.cliente}  onChange={v => setFotos(p => ({ ...p, cliente: v }))} />
-          <FotoUpload label="Foto de la casa"   value={fotos.casa}     onChange={v => setFotos(p => ({ ...p, casa: v }))} />
-          <FotoUpload label="Foto del negocio"  value={fotos.negocio}  onChange={v => setFotos(p => ({ ...p, negocio: v }))} />
-        </div>
-        <div style={{ padding: '0 24px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Upload size={12} color="#90aac8" />
-          <span style={{ fontSize: '11px', color: '#90aac8' }}>Formatos aceptados: JPG, PNG. Tamano maximo recomendado: 5 MB por imagen.</span>
-        </div>
-      </div>
-
-      {/* REFERENCIAS */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
-          <div style={{ width: '32px', height: '32px', background: '#e8f2fc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Users size={16} color="#0e50a0" />
-          </div>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>Referencias personales</span>
-          <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#90aac8', fontWeight: '600' }}>3 referencias</span>
-        </div>
-        <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {[1, 2, 3].map(n => (
-            <div key={n}>
-              <div style={{ fontSize: '12px', fontWeight: '700', color: '#0e50a0', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid #f0f6ff' }}>
-                Referencia {n}
+        {esCasado && (
+          <Card titulo="Datos del cónyuge" icon={Heart} iconBg="#fce8f0" iconColor="#be185d">
+            <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '280px' }}>
+                <Grid>
+                  <Campo label="Nombre"><input value={form.conyuge_nombre} onChange={e => ch('conyuge_nombre', e.target.value)} style={inp(false)} /></Campo>
+                  <Campo label="Teléfono"><input type="tel" value={form.conyuge_telefono} onChange={e => ch('conyuge_telefono', e.target.value)} style={inp(false)} /></Campo>
+                  <Campo label="Nombre del trabajo"><input value={form.conyuge_trabajo} onChange={e => ch('conyuge_trabajo', e.target.value)} style={inp(false)} /></Campo>
+                  <Campo label="Dirección del trabajo"><input value={form.conyuge_direccionTrabajo} onChange={e => ch('conyuge_direccionTrabajo', e.target.value)} style={inp(false)} /></Campo>
+                  <Campo label="Ocupación"><input value={form.conyuge_ocupacion} onChange={e => ch('conyuge_ocupacion', e.target.value)} style={inp(false)} /></Campo>
+                  <Campo label="Ingreso mensual"><input type="number" value={form.conyuge_ingreso} onChange={e => ch('conyuge_ingreso', e.target.value)} style={inp(false)} /></Campo>
+                </Grid>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-                {[
-                  { label: 'Nombre completo', name: `ref${n}_nombre`,     type: 'text' },
-                  { label: 'Parentesco',       name: `ref${n}_parentesco`, type: 'text' },
-                  { label: 'Telefono',         name: `ref${n}_telefono`,   type: 'tel' },
-                  { label: 'Calle',            name: `ref${n}_calle`,      type: 'text' },
-                  { label: 'Colonia',          name: `ref${n}_colonia`,    type: 'text' },
-                  { label: 'Municipio',        name: `ref${n}_municipio`,  type: 'text' },
-                ].map(({ label, name, type }) => (
-                  <div key={name}>
-                    <label style={{ fontSize: '11px', fontWeight: '600', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>
-                      {label}
-                    </label>
-                    <input
-                      type={type}
-                      value={form[name]}
-                      onChange={e => change(name, e.target.value)}
-                      placeholder={label}
-                      style={inp(false)}
-                    />
-                  </div>
-                ))}
+              <FotoUpload label="Foto cónyuge" value={fotos.conyuge} onChange={v => setFotos(p => ({ ...p, conyuge: v }))} size={100} />
+            </div>
+          </Card>
+        )}
+
+        <Card titulo="Datos de contacto de referencia" icon={Users}>
+          {[1, 2, 3].map(n => (
+            <div key={n} style={{ marginBottom: n < 3 ? '14px' : 0, paddingBottom: n < 3 ? '14px' : 0, borderBottom: n < 3 ? '1px solid #f0f6ff' : 'none' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '12px' }}>
+                <Campo label={`Nombre ${n}`}><input value={form[`ref${n}_nombre`]} onChange={e => ch(`ref${n}_nombre`, e.target.value)} style={inp(false)} /></Campo>
+                <Campo label="Teléfono"><input type="tel" value={form[`ref${n}_telefono`]} onChange={e => ch(`ref${n}_telefono`, e.target.value)} style={inp(false)} /></Campo>
+                <Campo label="Domicilio"><input value={form[`ref${n}_domicilio`]} onChange={e => ch(`ref${n}_domicilio`, e.target.value)} style={inp(false)} placeholder="Calle, colonia, municipio" /></Campo>
               </div>
             </div>
           ))}
+        </Card>
+
+        <Card titulo="Domicilio" icon={MapPin}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '14px' }}>
+            <Campo label="Código postal"><input value={form.cp} onChange={e => ch('cp', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Calle"><input value={form.calle} onChange={e => ch('calle', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="No. exterior"><input value={form.numExt} onChange={e => ch('numExt', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="No. interior"><input value={form.numInt} onChange={e => ch('numInt', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Entre la calle de"><input value={form.entreCalles1} onChange={e => ch('entreCalles1', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Y de"><input value={form.entreCalles2} onChange={e => ch('entreCalles2', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Colonia"><input value={form.colonia} onChange={e => ch('colonia', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Municipio / Alcaldía"><input value={form.municipio} onChange={e => ch('municipio', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Estado">
+              <select value={form.estado} onChange={e => ch('estado', e.target.value)} style={sel(false)}>
+                <option value="">-Elige-</option>
+                {ESTADOS_MX.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </Campo>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <Campo label="Referencia de ubicación"><input value={form.referenciaUbicacion} onChange={e => ch('referenciaUbicacion', e.target.value)} style={inp(false)} placeholder="Ej. Casa azul con portón negro" /></Campo>
+            <Campo label="Referencia adicional"><input value={form.referenciaAdicional} onChange={e => ch('referenciaAdicional', e.target.value)} style={inp(false)} /></Campo>
+          </div>
+          <div style={{ marginTop: '16px', borderRadius: '12px', border: '1px solid #dceaf8', height: '180px', background: '#f0f6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#90aac8', flexDirection: 'column', gap: '8px' }}>
+            <MapPin size={28} />
+            <div style={{ fontSize: '12px', fontWeight: '600' }}>Mapa de ubicación — arrastra el marcador para ubicar la casa del cliente</div>
+          </div>
+        </Card>
+      </>}
+
+      {/* ── TAB 1: DOCUMENTACIÓN DIGITAL ── */}
+      {tab === 1 && (
+        <Card titulo="Documentación digital" icon={FileText}>
+          <p style={{ fontSize: '13px', color: '#4a6a94', marginBottom: '20px', margin: '0 0 20px' }}>Sube los documentos y fotografías del cliente.</p>
+          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+            <FotoUpload label="Foto del cliente"      value={fotos.cliente}     onChange={v => setFotos(p => ({ ...p, cliente: v }))}     size={120} />
+            <FotoUpload label="Foto de la casa"       value={fotos.casa}        onChange={v => setFotos(p => ({ ...p, casa: v }))}        size={120} />
+            <FotoUpload label="Foto del negocio"      value={fotos.negocio}     onChange={v => setFotos(p => ({ ...p, negocio: v }))}     size={120} />
+            <FotoUpload label="INE / IFE"             value={fotos.ine}         onChange={v => setFotos(p => ({ ...p, ine: v }))}         size={120} />
+            <FotoUpload label="Comprobante domicilio" value={fotos.comprobante} onChange={v => setFotos(p => ({ ...p, comprobante: v }))} size={120} />
+          </div>
+          <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Upload size={12} color="#90aac8" />
+            <span style={{ fontSize: '11px', color: '#90aac8' }}>Formatos: JPG, PNG. Máximo 5 MB por imagen.</span>
+          </div>
+        </Card>
+      )}
+
+      {/* ── TAB 2: INFORMACIÓN FINANCIERA ── */}
+      {tab === 2 && (
+        <Card titulo="Información financiera" icon={DollarSign}>
+          <Grid>
+            <Campo label="Ingreso mensual"><input type="number" value={form.ingresoMensual} onChange={e => ch('ingresoMensual', e.target.value)} style={inp(false)} placeholder="$0.00" /></Campo>
+            <Campo label="Egresos mensuales"><input type="number" value={form.egresos} onChange={e => ch('egresos', e.target.value)} style={inp(false)} placeholder="$0.00" /></Campo>
+            <Campo label="Otros ingresos"><input type="number" value={form.otrosIngresos} onChange={e => ch('otrosIngresos', e.target.value)} style={inp(false)} placeholder="$0.00" /></Campo>
+            <Campo label="Patrimonio"><input type="number" value={form.patrimonio} onChange={e => ch('patrimonio', e.target.value)} style={inp(false)} placeholder="$0.00" /></Campo>
+          </Grid>
+        </Card>
+      )}
+
+      {/* ── TAB 3: INFORMACIÓN LABORAL ── */}
+      {tab === 3 && (
+        <Card titulo="Información laboral" icon={Briefcase}>
+          <Grid>
+            <Campo label="Empresa / Negocio"><input value={form.empresa} onChange={e => ch('empresa', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Ocupación / Puesto"><input value={form.ocupacion} onChange={e => ch('ocupacion', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Dirección laboral"><input value={form.direccionLaboral} onChange={e => ch('direccionLaboral', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Teléfono laboral"><input type="tel" value={form.telefonoLaboral} onChange={e => ch('telefonoLaboral', e.target.value)} style={inp(false)} /></Campo>
+            <Campo label="Antigüedad"><input value={form.antiguedad} onChange={e => ch('antiguedad', e.target.value)} style={inp(false)} placeholder="Ej. 2 años" /></Campo>
+            <Campo label="Tipo de contrato">
+              <select value={form.tipoContrato} onChange={e => ch('tipoContrato', e.target.value)} style={sel(false)}>
+                <option value="">-Elige-</option>
+                <option value="Indefinido">Indefinido</option>
+                <option value="Temporal">Temporal</option>
+                <option value="Por obra">Por obra</option>
+                <option value="Honorarios">Honorarios</option>
+                <option value="Negocio propio">Negocio propio</option>
+              </select>
+            </Campo>
+          </Grid>
+        </Card>
+      )}
+
+      {/* BOTONES */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginTop: '4px', marginBottom: '32px' }}>
+        <button onClick={reset} style={{ background: '#fff', border: '1.5px solid #dceaf8', borderRadius: '10px', padding: '10px 20px', fontSize: '13px', fontWeight: '600', color: '#4a6a94', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <RotateCcw size={13} /> Limpiar
+        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {tab < 3 && (
+            <button onClick={() => setTab(t => t + 1)} style={{ background: '#e8f2fc', border: 'none', borderRadius: '10px', padding: '10px 20px', fontSize: '13px', fontWeight: '600', color: '#0e50a0', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              Siguiente <ChevronRight size={14} />
+            </button>
+          )}
+          <button onClick={handleSave} disabled={estado === 'loading'} style={{ background: estado === 'loading' ? '#90aac8' : '#0e50a0', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: estado === 'loading' ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '7px', boxShadow: '0 4px 14px rgba(14,80,160,0.28)' }}>
+            {estado === 'loading' ? <><Loader size={13} style={{ animation: 'spin 1s linear infinite' }} />Guardando...</> : <><Save size={13} />Guardar cliente</>}
+          </button>
         </div>
       </div>
 
-      {/* BOTONES */}
-      <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '4px', marginBottom: '32px' }}>
-        <button onClick={handleReset} style={{ background: '#fff', border: '1.5px solid #dceaf8', borderRadius: '10px', padding: '11px 24px', fontSize: '13px', fontWeight: '600', color: '#4a6a94', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '7px' }}>
-          <RotateCcw size={14} /> Limpiar
-        </button>
-        <button onClick={handleSave} disabled={estado === 'loading'} style={{ background: estado === 'loading' ? '#90aac8' : '#0e50a0', border: 'none', borderRadius: '10px', padding: '11px 28px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: estado === 'loading' ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '7px', boxShadow: '0 4px 14px rgba(14,80,160,0.28)' }}>
-          {estado === 'loading' ? <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Guardando...</> : <><Save size={14} /> Guardar cliente</>}
-        </button>
-      </div>
-
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
