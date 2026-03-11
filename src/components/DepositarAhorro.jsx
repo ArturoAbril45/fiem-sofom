@@ -32,7 +32,7 @@ export default function DepositarAhorro() {
       const res = await fetch(`${API}/api/movimientos-ahorro`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cuentaId: cuentaSel._id, folio: cuentaSel.folio, clienteNombre: cuentaSel.clienteNombre, tipo: 'Deposito', monto: Number(form.monto), metodo: form.metodo, referencia: form.referencia, fecha: form.fecha, observaciones: form.observaciones }),
+        body: JSON.stringify({ cuentaId: cuentaSel._id, folio: cuentaSel.folio || cuentaSel.numeroCuenta || cuentaSel._id, clienteNombre: cuentaSel.clienteNombre, tipo: 'Deposito', monto: Number(form.monto), metodo: form.metodo, referencia: form.referencia, fecha: form.fecha, observaciones: form.observaciones }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al registrar deposito');
