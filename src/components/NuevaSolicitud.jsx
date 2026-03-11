@@ -124,10 +124,6 @@ export default function NuevaSolicitud() {
   const totalDisp     = ingresoTotal - totalGasto;
 
   const simularPlan = () => {
-    if (!monto || !plazo || !tasaInteres) {
-      setMsgErr('Completa monto, plazo y tasa de interés para simular.');
-      setTimeout(()=>setMsgErr(''),3000); return;
-    }
     const capital   = parseFloat(monto) || 0;
     const tasaP     = parseFloat(tasaInteres) / 100; // tasa por periodo
     const periodos  = parseInt(plazo) || 1;
