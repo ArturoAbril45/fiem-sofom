@@ -77,24 +77,32 @@ export default function ConsultarCliente() {
   const [guardando, setGuardando] = useState(false);
   const [msgOk,     setMsgOk]     = useState('');
 
-  const buscar = async (termino) => {
-    const q = termino !== undefined ? termino : busqueda;
-    setCargando(true); setError(''); setClientes([]); setSelected(null);
+  const fetchClientes = async (q = '') => {
+    setCargando(true); setError('');
     try {
       const url = q.trim()
         ? `${API}/api/clientes?busqueda=${encodeURIComponent(q)}`
         : `${API}/api/clientes`;
       const res  = await fetch(url);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al buscar');
+      if (!res.ok) throw new Error(data.error || 'Error');
       setClientes(data);
       if (data.length === 0) setError('No se encontraron clientes.');
     } catch (e) { setError(e.message); }
     finally { setCargando(false); }
   };
 
-  // Cargar todos los clientes al abrir el modulo
-  useEffect(() => { buscar(''); }, []);
+  useEffect(() => {
+    fetch(`${API}/api/clientes`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setClientes(data); })
+      .catch(() => {});
+  }, []);
+
+  const buscar = () => {
+    setSelected(null);
+    fetchClientes(busqueda);
+  };
 
   const verDetalle = async (id) => {
     setCargando(true); setError(''); setSelected(null); setEditando(false);
