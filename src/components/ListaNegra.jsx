@@ -1,49 +1,132 @@
 'use client';
-import { useState } from 'react';
-import { Search, AlertCircle, UserX, X, Plus } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, AlertCircle, UserX, X, Plus, CheckCircle, Loader, RefreshCw } from 'lucide-react';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://fiem-backend-production.up.railway.app';
 
 function formatMoney(n) {
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(n || 0);
 }
 
 export default function ListaNegra() {
-  const [busqueda, setBusqueda]           = useState('');
-  const [lista, setLista]                 = useState([]);
-  const [modal, setModal]                 = useState(false);
+  const [busqueda,      setBusqueda]      = useState('');
+  const [lista,         setLista]         = useState([]);
+  const [modal,         setModal]         = useState(false);
   const [confirmarElim, setConfirmarElim] = useState(null);
-  const [form, setForm]                   = useState({ nombre: '', curp: '', motivo: '', monto: '' });
+  const [form,          setForm]          = useState({ nombre: '', curp: '', motivo: '', monto: '' });
+  const [cargando,      setCargando]      = useState(true);
+  const [guardando,     setGuardando]     = useState(false);
+  const [eliminando,    setEliminando]    = useState(false);
+  const [notif,         setNotif]         = useState(null);
+  const [errorConn,     setErrorConn]     = useState('');
 
-  const filtrados = lista.filter(c =>
-    c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.curp.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  const cargar = useCallback(async () => {
+    setCargando(true); setErrorConn('');
+    try {
+      const res  = await fetch(`${API}/api/lista-negra`);
+      const data = await res.json();
+      setLista(Array.isArray(data) ? data : []);
+    } catch {
+      setErrorConn('No se pudo conectar con el servidor.');
+    } finally {
+      setCargando(false);
+    }
+  }, []);
 
-  const agregar = () => {
-    if (!form.nombre || !form.curp || !form.motivo) return;
-    setLista(p => [...p, { id: Date.now(), ...form, monto: Number(form.monto) || 0, fechaIngreso: new Date().toISOString().slice(0, 10) }]);
-    setForm({ nombre: '', curp: '', motivo: '', monto: '' });
-    setModal(false);
+  useEffect(() => { cargar(); }, [cargar]);
+
+  const mostrarNotif = (tipo, msg) => {
+    setNotif({ tipo, msg });
+    setTimeout(() => setNotif(null), 3500);
   };
 
-  const eliminar = (id) => { setLista(p => p.filter(c => c.id !== id)); setConfirmarElim(null); };
+  const agregar = async () => {
+    if (!form.nombre || !form.curp || !form.motivo) return;
+    setGuardando(true);
+    try {
+      const res = await fetch(`${API}/api/clientes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre:    form.nombre.split(' ')[0] || form.nombre,
+          apellidoP: form.nombre.split(' ')[1] || '',
+          apellidoM: form.nombre.split(' ')[2] || '',
+          curp:      form.curp.toUpperCase(),
+          celular:   '',
+          estatus:   'Lista negra',
+          motivoListaNegra: form.motivo,
+          montoAdeudado:    Number(form.monto) || 0,
+        }),
+      });
+      if (!res.ok) throw new Error('Error al guardar');
+      mostrarNotif('ok', `${form.nombre} agregado a lista negra.`);
+      setForm({ nombre: '', curp: '', motivo: '', monto: '' });
+      setModal(false);
+      cargar();
+    } catch (e) {
+      mostrarNotif('error', e.message.includes('duplicate') ? 'Ya existe un registro con ese CURP.' : 'Error al agregar a lista negra.');
+    } finally {
+      setGuardando(false);
+    }
+  };
 
-  const inp = { border: '1.5px solid #e2e8f0', borderRadius: '9px', padding: '10px 13px', fontSize: '13px', fontFamily: 'DM Sans, sans-serif', color: '#0d1f5c', outline: 'none', width: '100%', background: '#fafbfd', boxSizing: 'border-box' };
-  const lbl = { fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' };
+  const eliminar = async () => {
+    if (!confirmarElim) return;
+    setEliminando(true);
+    try {
+      const res = await fetch(`${API}/api/clientes/${confirmarElim._id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      mostrarNotif('ok', `${confirmarElim.nombre} ${confirmarElim.apellidoP} eliminado de lista negra.`);
+      setConfirmarElim(null);
+      cargar();
+    } catch {
+      mostrarNotif('error', 'Error al eliminar el registro.');
+      setConfirmarElim(null);
+    } finally {
+      setEliminando(false);
+    }
+  };
+
+  const filtrados = lista.filter(c => {
+    const nombreCompleto = `${c.nombre} ${c.apellidoP} ${c.apellidoM}`.toLowerCase();
+    return nombreCompleto.includes(busqueda.toLowerCase()) || (c.curp || '').toLowerCase().includes(busqueda.toLowerCase());
+  });
+
+  const inp = { border: '1.5px solid #dceaf8', borderRadius: '9px', padding: '10px 13px', fontSize: '13px', fontFamily: 'DM Sans, sans-serif', color: '#1a3d6e', outline: 'none', width: '100%', background: '#fafcff', boxSizing: 'border-box' };
+  const lbl = { fontSize: '11px', fontWeight: '600', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' };
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '960px', margin: '0 auto' }}>
 
-      {/* Buscador + boton */}
-      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e4ecf5', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', padding: '20px 24px', marginBottom: '20px' }}>
+      {/* Notificación */}
+      {notif && (
+        <div style={{ background: notif.tipo === 'ok' ? '#dcfce7' : '#fee2e2', border: `1px solid ${notif.tipo === 'ok' ? '#86efac' : '#fca5a5'}`, borderRadius: '12px', padding: '13px 18px', marginBottom: '18px', color: notif.tipo === 'ok' ? '#166534' : '#dc2626', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {notif.tipo === 'ok' ? <CheckCircle size={16} /> : <AlertCircle size={16} />} {notif.msg}
+        </div>
+      )}
+
+      {/* Error conexión */}
+      {errorConn && (
+        <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '12px', padding: '13px 18px', marginBottom: '18px', color: '#dc2626', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <AlertCircle size={16} /> {errorConn}
+          <button onClick={cargar} style={{ marginLeft: 'auto', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '7px', padding: '5px 12px', fontSize: '12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: '600' }}>Reintentar</button>
+        </div>
+      )}
+
+      {/* Buscador + botón */}
+      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #dceaf8', boxShadow: '0 2px 12px rgba(14,80,160,0.05)', padding: '20px 24px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
           <div style={{ flex: 1 }}>
             <label style={lbl}>Buscar en lista negra</label>
             <div style={{ position: 'relative' }}>
-              <Search size={15} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+              <Search size={15} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: '#90aac8', pointerEvents: 'none' }} />
               <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre o CURP..." style={{ ...inp, paddingLeft: '38px' }} />
             </div>
           </div>
-          <button onClick={() => setModal(true)} style={{ background: '#1565c0', border: 'none', borderRadius: '9px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+          <button onClick={cargar} style={{ background: '#e8f2fc', border: '1px solid #dceaf8', borderRadius: '9px', padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '600', color: '#0e50a0', fontFamily: 'DM Sans, sans-serif' }}>
+            <RefreshCw size={14} />
+          </button>
+          <button onClick={() => setModal(true)} style={{ background: '#dc2626', border: 'none', borderRadius: '9px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(220,38,38,0.25)' }}>
             <Plus size={14} /> Agregar
           </button>
         </div>
@@ -58,64 +141,69 @@ export default function ListaNegra() {
       </div>
 
       {/* Tabla */}
-      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e4ecf5', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <UserX size={17} color="#dc2626" />
-          <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '16px', fontWeight: '700', color: '#040e2e' }}>Lista negra</span>
-          <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#94a3b8' }}>{filtrados.length} registro(s)</span>
+      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #dceaf8', boxShadow: '0 2px 12px rgba(14,80,160,0.05)', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f6ff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '32px', height: '32px', background: '#fee2e2', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <UserX size={16} color="#dc2626" />
+          </div>
+          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>Lista negra</span>
+          <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#90aac8' }}>{filtrados.length} registro(s)</span>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#fef2f2' }}>
-                {['Nombre', 'CURP', 'Motivo', 'Monto adeudado', 'Fecha ingreso', ''].map(h => (
-                  <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '11px', fontWeight: '700', color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtrados.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: '48px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>No hay registros en lista negra</td></tr>
-              ) : filtrados.map((c, i) => (
-                <tr key={c.id} style={{ borderTop: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafbfd' }}>
-                  <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: '#0d1f5c' }}>{c.nombre}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '12px', color: '#475569', fontFamily: 'monospace' }}>{c.curp}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '13px', color: '#475569', maxWidth: '200px' }}>{c.motivo}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: '#dc2626' }}>{formatMoney(c.monto)}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '13px', color: '#475569' }}>{c.fechaIngreso}</td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <button onClick={() => setConfirmarElim(c)} style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '7px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#dc2626', fontFamily: 'DM Sans, sans-serif' }}>
-                      Eliminar
-                    </button>
-                  </td>
+          {cargando ? (
+            <div style={{ padding: '60px', textAlign: 'center', color: '#90aac8', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+              <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Cargando lista negra...
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#fef2f2' }}>
+                  {['Nombre', 'CURP', 'Motivo', 'Monto adeudado', 'Fecha ingreso', ''].map(h => (
+                    <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '11px', fontWeight: '700', color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtrados.length === 0 ? (
+                  <tr><td colSpan={6} style={{ padding: '48px', textAlign: 'center', color: '#90aac8', fontSize: '13px' }}>No hay registros en lista negra</td></tr>
+                ) : filtrados.map((c, i) => (
+                  <tr key={c._id} style={{ borderTop: '1px solid #f0f6ff', background: i % 2 === 0 ? '#fff' : '#fafcff' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '600', color: '#0a2d5e' }}>{c.nombre} {c.apellidoP} {c.apellidoM}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '12px', color: '#4a6a94', fontFamily: 'monospace' }}>{c.curp}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#4a6a94', maxWidth: '200px' }}>{c.motivoListaNegra || '—'}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: '#dc2626' }}>{formatMoney(c.montoAdeudado)}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#4a6a94' }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('es-MX') : '—'}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <button onClick={() => setConfirmarElim(c)} style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '7px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#dc2626', fontFamily: 'DM Sans, sans-serif' }}>
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
       {/* Modal agregar */}
       {modal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(4,14,46,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '460px', boxShadow: '0 24px 80px rgba(13,31,92,0.18)', overflow: 'hidden' }}>
-
-            {/* Header sin degradado */}
-            <div style={{ background: '#fff', borderBottom: '1px solid #e4ecf5', padding: '22px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(10,45,94,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '460px', boxShadow: '0 24px 80px rgba(10,45,94,0.2)', overflow: 'hidden' }}>
+            <div style={{ background: '#fff', borderBottom: '1px solid #dceaf8', padding: '22px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', background: '#fef2f2', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '40px', height: '40px', background: '#fee2e2', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <UserX size={20} color="#dc2626" />
                 </div>
                 <div>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '17px', fontWeight: '700', color: '#040e2e' }}>Agregar a lista negra</div>
-                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>El cliente no podra recibir creditos</div>
+                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>Agregar a lista negra</div>
+                  <div style={{ fontSize: '12px', color: '#90aac8', marginTop: '2px' }}>El cliente no podra recibir creditos</div>
                 </div>
               </div>
-              <button onClick={() => setModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}>
+              <button onClick={() => setModal(false)} style={{ background: '#f0f6ff', border: 'none', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#4a6a94' }}>
                 <X size={16} />
               </button>
             </div>
-
             <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {[
                 { label: 'Nombre completo',      key: 'nombre', type: 'text' },
@@ -129,10 +217,11 @@ export default function ListaNegra() {
                 </div>
               ))}
             </div>
-
             <div style={{ padding: '0 28px 24px', display: 'flex', gap: '10px' }}>
-              <button onClick={() => setModal(false)} style={{ flex: 1, padding: '11px', border: '1.5px solid #e2e8f0', background: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#64748b', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Cancelar</button>
-              <button onClick={agregar} style={{ flex: 2, padding: '11px', border: 'none', background: '#dc2626', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Agregar a lista negra</button>
+              <button onClick={() => setModal(false)} style={{ flex: 1, padding: '11px', border: '1.5px solid #dceaf8', background: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#4a6a94', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Cancelar</button>
+              <button onClick={agregar} disabled={guardando} style={{ flex: 2, padding: '11px', border: 'none', background: guardando ? '#fca5a5' : '#dc2626', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: guardando ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}>
+                {guardando ? <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Guardando...</> : 'Agregar a lista negra'}
+              </button>
             </div>
           </div>
         </div>
@@ -140,20 +229,26 @@ export default function ListaNegra() {
 
       {/* Modal confirmar eliminar */}
       {confirmarElim && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(4,14,46,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '380px', padding: '28px', boxShadow: '0 24px 80px rgba(13,31,92,0.18)' }}>
-            <AlertCircle size={32} color="#dc2626" style={{ marginBottom: '14px' }} />
-            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '17px', fontWeight: '700', color: '#040e2e', marginBottom: '8px' }}>Confirmar eliminacion</div>
-            <p style={{ fontSize: '13px', color: '#475569', marginBottom: '22px', lineHeight: '1.6' }}>
-              Estas por eliminar a <strong>{confirmarElim.nombre}</strong> de la lista negra. Esta accion no se puede deshacer.
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,45,94,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '380px', padding: '32px', boxShadow: '0 24px 80px rgba(10,45,94,0.2)' }}>
+            <div style={{ width: '52px', height: '52px', background: '#fee2e2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px' }}>
+              <AlertCircle size={24} color="#dc2626" />
+            </div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '18px', fontWeight: '700', color: '#0a2d5e', marginBottom: '10px' }}>Confirmar eliminacion</div>
+            <p style={{ fontSize: '13px', color: '#4a6a94', marginBottom: '24px', lineHeight: '1.7' }}>
+              Estas por eliminar a <strong>{confirmarElim.nombre} {confirmarElim.apellidoP}</strong> de la lista negra. Esta accion no se puede deshacer.
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setConfirmarElim(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid #e2e8f0', background: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#64748b', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Cancelar</button>
-              <button onClick={() => eliminar(confirmarElim.id)} style={{ flex: 1, padding: '11px', border: 'none', background: '#dc2626', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Eliminar</button>
+              <button onClick={() => setConfirmarElim(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid #dceaf8', background: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#4a6a94', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Cancelar</button>
+              <button onClick={eliminar} disabled={eliminando} style={{ flex: 1, padding: '11px', border: 'none', background: '#dc2626', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: eliminando ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}>
+                {eliminando ? <><Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> Eliminando...</> : 'Eliminar'}
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

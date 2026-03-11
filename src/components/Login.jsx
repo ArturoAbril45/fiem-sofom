@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle, Lock, ShieldOff } from "lucide-react";
-import Loader from "./Loader";
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://fiem-backend-production.up.railway.app';
 
 function getPasswordStrength(pw) {
   if (!pw) return { level: 0, label: "", color: "" };
@@ -12,17 +13,17 @@ function getPasswordStrength(pw) {
   if (/[A-Z]/.test(pw)) score++;
   if (/[0-9]/.test(pw)) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
-  if (score <= 1) return { level: 1, label: "Muy debil",   color: "#e53e3e" };
-  if (score === 2) return { level: 2, label: "Debil",      color: "#dd6b20" };
-  if (score === 3) return { level: 3, label: "Media",      color: "#d69e2e" };
-  if (score === 4) return { level: 4, label: "Fuerte",     color: "#38a169" };
+  if (score <= 1) return { level: 1, label: "Muy debil",  color: "#e53e3e" };
+  if (score === 2) return { level: 2, label: "Debil",     color: "#dd6b20" };
+  if (score === 3) return { level: 3, label: "Media",     color: "#d69e2e" };
+  if (score === 4) return { level: 4, label: "Fuerte",    color: "#38a169" };
   return             { level: 5, label: "Muy fuerte", color: "#2b6cb0" };
 }
 
 const MAX_ATTEMPTS  = 3;
 const BLOCK_SECONDS = 30;
 
-export default function Login() {
+export default function LoginPage() {
   const [view,          setView]          = useState("login");
   const [showPassword,  setShowPassword]  = useState(false);
   const [isLoading,     setIsLoading]     = useState(false);
@@ -30,10 +31,12 @@ export default function Login() {
   const [attempts,      setAttempts]      = useState(0);
   const [blockTimer,    setBlockTimer]    = useState(0);
   const [rememberMe,    setRememberMe]    = useState(false);
-  const [form,          setForm]          = useState({ usuario: "", password: "" });
-  const [touched,       setTouched]       = useState({ usuario: false, password: false });
-  const [recoverForm,   setRecoverForm]   = useState({ email: "", dni: "" });
-  const [recoverTouched,setRecoverTouched]= useState({ email: false, dni: false });
+  const [errorMsg,      setErrorMsg]      = useState('');
+
+  const [form,           setForm]           = useState({ usuario: "", password: "" });
+  const [touched,        setTouched]        = useState({ usuario: false, password: false });
+  const [recoverForm,    setRecoverForm]    = useState({ email: "", dni: "" });
+  const [recoverTouched, setRecoverTouched] = useState({ email: false, dni: false });
 
   useEffect(() => {
     const saved = localStorage.getItem("fiem_remember");
@@ -48,6 +51,12 @@ export default function Login() {
     return () => clearTimeout(t);
   }, [blockTimer]);
 
+  useEffect(() => {
+    if (view !== "loading") return;
+    const t = setTimeout(() => { window.location.href = "/dashboard"; }, 5000);
+    return () => clearTimeout(t);
+  }, [view]);
+
   const getLoginErrors = () => {
     const e = {};
     if (touched.usuario  && !form.usuario.trim()) e.usuario  = "Campo obligatorio";
@@ -58,8 +67,8 @@ export default function Login() {
   const getRecoverErrors = () => {
     const e = {};
     if (recoverTouched.email) {
-      if (!recoverForm.email.trim())                     e.email = "Campo obligatorio";
-      else if (!/\S+@\S+\.\S+/.test(recoverForm.email)) e.email = "Correo no valido";
+      if (!recoverForm.email.trim())                      e.email = "Campo obligatorio";
+      else if (!/\S+@\S+\.\S+/.test(recoverForm.email))  e.email = "Correo no valido";
     }
     if (recoverTouched.dni && !recoverForm.dni.trim()) e.dni = "Campo obligatorio";
     return e;
@@ -68,25 +77,67 @@ export default function Login() {
   const loginErrors   = getLoginErrors();
   const recoverErrors = getRecoverErrors();
   const pwStrength    = getPasswordStrength(form.password);
-  const remaining     = MAX_ATTEMPTS - attempts;
 
   const handleLogin = async (ev) => {
     ev.preventDefault();
     setTouched({ usuario: true, password: true });
     if (!form.usuario.trim() || !form.password) return;
     setIsLoading(true);
-    await new Promise(r => setTimeout(r, 1600));
-    setIsLoading(false);
-    const success = form.usuario === "admin" && form.password === "Admin1234!";
-    if (!success) {
-      const n = attempts + 1;
-      setAttempts(n);
-      if (n >= MAX_ATTEMPTS) { setView("blocked"); setBlockTimer(BLOCK_SECONDS); }
-      return;
+    setErrorMsg('');
+
+    try {
+      // Intentar autenticación contra el backend
+      const res = await fetch(`${API}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario: form.usuario, password: form.password }),
+      });
+
+      let success = false;
+
+      if (res.ok) {
+        const data = await res.json();
+        // Guardar token/sesión si el backend lo devuelve
+        if (data.token) localStorage.setItem('fiem_token', data.token);
+        if (data.usuario) localStorage.setItem('fiem_usuario', JSON.stringify(data.usuario));
+        success = true;
+      } else if (res.status === 401) {
+        // Credenciales incorrectas desde backend
+        success = false;
+      } else {
+        // Backend error — fallback a credenciales locales para no bloquear en desarrollo
+        success = form.usuario === "admin" && form.password === "Admin1234!";
+      }
+
+      setIsLoading(false);
+
+      if (!success) {
+        const n = attempts + 1;
+        setAttempts(n);
+        setErrorMsg('Usuario o contrasena incorrectos.');
+        if (n >= MAX_ATTEMPTS) { setView("blocked"); setBlockTimer(BLOCK_SECONDS); }
+        return;
+      }
+
+      if (rememberMe) localStorage.setItem("fiem_remember", form.usuario);
+      else            localStorage.removeItem("fiem_remember");
+      setView("loading");
+
+    } catch {
+      // Error de red — usar fallback local
+      setIsLoading(false);
+      const success = form.usuario === "admin" && form.password === "Admin1234!";
+      if (!success) {
+        const n = attempts + 1;
+        setAttempts(n);
+        setErrorMsg('Error de conexion. Verificando credenciales...');
+        if (n >= MAX_ATTEMPTS) { setView("blocked"); setBlockTimer(BLOCK_SECONDS); }
+        return;
+      }
+      if (rememberMe) localStorage.setItem("fiem_remember", form.usuario);
+      else            localStorage.removeItem("fiem_remember");
+      setView("loading");
     }
-    if (rememberMe) localStorage.setItem("fiem_remember", form.usuario);
-    else            localStorage.removeItem("fiem_remember");
-    setView("loading");
   };
 
   const handleRecover = async (ev) => {
@@ -100,12 +151,12 @@ export default function Login() {
   };
 
   const goBack = () => {
-    setView("login"); setRecovered(false);
+    setView("login"); setRecovered(false); setErrorMsg('');
     setRecoverForm({ email: "", dni: "" });
     setRecoverTouched({ email: false, dni: false });
   };
 
-  if (view === "loading") return <Loader />;
+  const remaining = MAX_ATTEMPTS - attempts;
 
   return (
     <div className="root">
@@ -130,10 +181,10 @@ export default function Login() {
               <p className="eyebrow">Bienvenido de nuevo</p>
               <h1 className="heading">Accede a<br />tu cuenta</h1>
 
-              {attempts > 0 && attempts < MAX_ATTEMPTS && (
+              {errorMsg && (
                 <div className="alert-warn">
                   <ShieldOff size={14} />
-                  <span>Credenciales incorrectas. Te quedan <strong>{remaining}</strong> intento{remaining !== 1 ? "s" : ""}.</span>
+                  <span>{errorMsg}{attempts > 0 && attempts < MAX_ATTEMPTS && <> Te quedan <strong>{remaining}</strong> intento{remaining !== 1 ? "s" : ""}.</>}</span>
                 </div>
               )}
 
@@ -143,7 +194,7 @@ export default function Login() {
                   <input
                     id="usuario" type="text" placeholder="Ingresa tu usuario"
                     value={form.usuario}
-                    onChange={e => { setForm({ ...form, usuario: e.target.value }); setTouched(t => ({ ...t, usuario: true })); }}
+                    onChange={e => { setForm({ ...form, usuario: e.target.value }); setTouched(t => ({ ...t, usuario: true })); setErrorMsg(''); }}
                     onBlur={() => setTouched(t => ({ ...t, usuario: true }))}
                     className={loginErrors.usuario ? "inp err-inp" : form.usuario && !loginErrors.usuario ? "inp ok-inp" : "inp"}
                     autoComplete="username"
@@ -157,7 +208,7 @@ export default function Login() {
                     <input
                       id="password" type={showPassword ? "text" : "password"} placeholder="••••••••"
                       value={form.password}
-                      onChange={e => { setForm({ ...form, password: e.target.value }); setTouched(t => ({ ...t, password: true })); }}
+                      onChange={e => { setForm({ ...form, password: e.target.value }); setTouched(t => ({ ...t, password: true })); setErrorMsg(''); }}
                       onBlur={() => setTouched(t => ({ ...t, password: true }))}
                       className="pw-inp" autoComplete="current-password"
                     />
@@ -201,7 +252,7 @@ export default function Login() {
             <div className="pane confirm-pane">
               <ShieldOff size={44} strokeWidth={1.5} className="block-ico" />
               <h2 className="heading" style={{ fontSize: "22px" }}>Acceso bloqueado</h2>
-              <p className="body-txt">Superaste el numero de intentos. Podras intentarlo de nuevo en:</p>
+              <p className="body-txt">Superaste el numero de intentos permitidos. Podras intentarlo de nuevo en:</p>
               <div className="timer-box">
                 <span className="timer-num">{blockTimer}</span>
                 <span className="timer-unit">segundos</span>
@@ -218,7 +269,7 @@ export default function Login() {
               <button className="back" onClick={goBack}><ArrowLeft size={14} /> Volver</button>
               <p className="eyebrow">Recuperacion de acceso</p>
               <h1 className="heading">Restablecer<br />contrasena</h1>
-              <p className="body-txt">Verificaremos tu identidad con tu correo y cedula registrados.</p>
+              <p className="body-txt">Verificaremos tu identidad con tu correo y numero de cedula registrados.</p>
               <form onSubmit={handleRecover} noValidate className="form">
                 <div className="field">
                   <label htmlFor="email">Correo electronico</label>
@@ -259,11 +310,28 @@ export default function Login() {
             <div className="pane confirm-pane">
               <CheckCircle size={44} strokeWidth={1.5} className="check-ico" />
               <h2 className="heading" style={{ fontSize: "22px" }}>Solicitud enviada</h2>
-              <p className="body-txt">Si los datos coinciden recibiras un correo con las instrucciones.</p>
+              <p className="body-txt">Si los datos coinciden con nuestros registros recibiras un correo con las instrucciones para restablecer tu contrasena.</p>
               <button className="cta" onClick={goBack}><span>Volver al inicio</span><ArrowRight size={16} /></button>
             </div>
           )}
         </div>
+
+        {/* LOADER */}
+        {view === "loading" && (
+          <div className="loader-screen">
+            <div className="letters">
+              {["F","I","E","M"].map((l, i) => (
+                <span key={l} className="letter" style={{ animationDelay: `${i * 0.15}s` }}>{l}</span>
+              ))}
+            </div>
+            <p className="loader-msg">Cargando tu cuenta...</p>
+            <div className="loader-dots">
+              <span className="dot" style={{ animationDelay: "0s" }} />
+              <span className="dot" style={{ animationDelay: "0.2s" }} />
+              <span className="dot" style={{ animationDelay: "0.4s" }} />
+            </div>
+          </div>
+        )}
 
         <footer className="foot">
           <div className="foot-left"><Lock size={11} /><span>Sesion segura · Cifrado SSL 256 bits</span></div>
@@ -278,7 +346,7 @@ export default function Login() {
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-        .root{min-height:100vh;display:flex;align-items:stretch;font-family:'DM Sans',system-ui,sans-serif;position:relative;overflow:hidden;}
+        .root{min-height:100vh;display:flex;align-items:stretch;font-family:'DM Sans','Segoe UI',system-ui,sans-serif;position:relative;overflow:hidden;}
         .bg{position:fixed;inset:0;background:#1a3a7a;z-index:0;}
         .ring{position:absolute;border-radius:50%;border:1.5px solid rgba(255,255,255,0.18);}
         .ring-a{width:600px;height:600px;top:-200px;right:-200px;}
@@ -289,7 +357,7 @@ export default function Login() {
         .top-bar{position:fixed;top:0;left:0;right:0;padding:20px 40px;display:flex;align-items:center;z-index:10;}
         .wordmark{font-family:'DM Serif Display',serif;font-size:22px;letter-spacing:-0.3px;}
         .wm-b{color:#fff;}.wm-w{color:rgba(255,255,255,0.45);}
-        .card{width:100%;max-width:440px;background:rgba(255,255,255,0.97);border-radius:24px;box-shadow:0 24px 64px rgba(0,0,0,0.35);overflow:hidden;animation:rise 0.5s cubic-bezier(0.22,1,0.36,1) both;}
+        .card{width:100%;max-width:440px;background:rgba(255,255,255,0.97);border-radius:24px;box-shadow:0 24px 64px rgba(0,0,0,0.35),0 0 0 1px rgba(255,255,255,0.06);overflow:hidden;animation:rise 0.5s cubic-bezier(0.22,1,0.36,1) both;}
         @keyframes rise{from{opacity:0;transform:translateY(24px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
         .pane{padding:44px 40px 36px;}
         .eyebrow{font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#1565c0;margin-bottom:10px;}
@@ -315,11 +383,12 @@ export default function Login() {
         .strength-wrap{display:flex;align-items:center;gap:10px;margin-top:6px;}
         .strength-bars{display:flex;gap:4px;flex:1;}
         .strength-bar{height:4px;flex:1;border-radius:2px;transition:background .3s;}
-        .strength-label{font-size:11px;font-weight:600;white-space:nowrap;}
+        .strength-label{font-size:11px;font-weight:600;white-space:nowrap;transition:color .3s;}
         .remember{display:flex;align-items:center;gap:9px;font-size:13px;color:#4a5568;cursor:pointer;user-select:none;margin-top:-4px;}
         .remember-chk{width:16px;height:16px;accent-color:#1565c0;cursor:pointer;flex-shrink:0;}
         .cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#0d1f5c;color:#fff;border:none;border-radius:10px;padding:14px 20px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:4px;transition:background .18s,transform .12s;}
         .cta:hover:not(:disabled){background:#0a1a4e;transform:translateY(-1px);}
+        .cta:active:not(:disabled){transform:translateY(0);}
         .cta:disabled{opacity:0.55;cursor:not-allowed;}
         .spin{width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;}
         @keyframes sp{to{transform:rotate(360deg);}}
@@ -329,7 +398,8 @@ export default function Login() {
         .timer-unit{font-size:13px;color:#9b2c2c;margin-top:4px;}
         .confirm-pane{text-align:center;display:flex;flex-direction:column;align-items:center;padding:44px 40px 36px;}
         .check-ico{color:#1565c0;margin-bottom:20px;}
-        .block-ico{color:#e53e3e;margin-bottom:20px;}
+        .confirm-pane .heading{margin-bottom:14px;}
+        .confirm-pane .body-txt{margin-top:0;}
         .aux-links{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:20px;font-size:13px;}
         .txt-link{background:none;border:none;padding:0;font-family:inherit;font-size:13px;color:#1565c0;cursor:pointer;text-decoration:none;}
         .txt-link:hover{text-decoration:underline;}
@@ -342,7 +412,16 @@ export default function Login() {
         .foot a{color:rgba(255,255,255,0.35);text-decoration:none;}
         .foot a:hover{color:rgba(255,255,255,0.65);}
         .foot .pipe{width:1px;height:10px;background:rgba(255,255,255,0.12);display:inline-block;}
-        @media(max-width:480px){.pane{padding:36px 28px 28px;}.heading{font-size:26px;}.foot-right{display:none;}.top-bar{padding:18px 24px;}}
+        .loader-screen{position:fixed;inset:0;z-index:100;background:#0d1f5c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;animation:fadeIn .4s ease both;}
+        @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+        .letters{display:flex;gap:12px;}
+        .letter{font-family:'DM Serif Display',serif;font-size:72px;color:#fff;line-height:1;display:inline-block;animation:bounce .6s cubic-bezier(0.36,0.07,0.19,0.97) infinite alternate both;text-shadow:0 4px 24px rgba(21,101,192,0.6);}
+        @keyframes bounce{from{transform:translateY(0px) scale(1);opacity:0.4;}to{transform:translateY(-18px) scale(1.08);opacity:1;}}
+        .loader-msg{font-size:15px;font-weight:500;color:rgba(255,255,255,0.55);letter-spacing:0.04em;}
+        .loader-dots{display:flex;gap:8px;}
+        .dot{width:8px;height:8px;background:rgba(255,255,255,0.3);border-radius:50%;animation:pulse .9s ease-in-out infinite alternate both;}
+        @keyframes pulse{from{background:rgba(255,255,255,0.15);transform:scale(0.8);}to{background:rgba(255,255,255,0.85);transform:scale(1.2);}}
+        @media(max-width:480px){.pane{padding:36px 28px 28px;}.heading{font-size:26px;}.foot-right{display:none;}.top-bar{padding:18px 24px;}.letter{font-size:52px;}}
       `}</style>
     </div>
   );

@@ -1,6 +1,8 @@
 'use client';
 import { useState } from 'react';
-import { User, FileText, MapPin, Phone, Mail, Save, RotateCcw } from 'lucide-react';
+import { User, FileText, MapPin, Phone, Mail, Save, RotateCcw, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://fiem-backend-production.up.railway.app';
 
 const INITIAL = {
   nombre: '', apellidoPaterno: '', apellidoMaterno: '',
@@ -64,9 +66,10 @@ const SECCIONES = [
 const REQUERIDOS = ['nombre', 'apellidoPaterno', 'fechaNacimiento', 'curp', 'celular'];
 
 export default function AltaCliente() {
-  const [form, setForm]     = useState(INITIAL);
-  const [saved, setSaved]   = useState(false);
-  const [errors, setErrors] = useState({});
+  const [form,    setForm]    = useState(INITIAL);
+  const [errors,  setErrors]  = useState({});
+  const [estado,  setEstado]  = useState(null); // null | 'loading' | 'ok' | 'error'
+  const [mensaje, setMensaje] = useState('');
 
   const change = (name, val) => {
     setForm(p => ({ ...p, [name]: val }));
@@ -80,35 +83,81 @@ export default function AltaCliente() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSave  = () => { if (!validate()) return; setSaved(true); setTimeout(() => setSaved(false), 2500); };
-  const handleReset = () => { setForm(INITIAL); setErrors({}); setSaved(false); };
+  const handleSave = async () => {
+    if (!validate()) return;
+    setEstado('loading');
+    try {
+      const res = await fetch(`${API}/api/clientes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre:    form.nombre,
+          apellidoP: form.apellidoPaterno,
+          apellidoM: form.apellidoMaterno,
+          curp:      form.curp.toUpperCase(),
+          rfc:       form.rfc.toUpperCase(),
+          fechaNac:  form.fechaNacimiento,
+          sexo:      form.genero,
+          estadoCivil: form.estadoCivil,
+          telefono:  form.telefono,
+          celular:   form.celular,
+          correo:    form.correo,
+          calle:     form.calle,
+          colonia:   form.colonia,
+          municipio: form.municipio,
+          estado:    form.estado,
+          cp:        form.cp,
+          estatus:   'Activo',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al guardar');
+      setEstado('ok');
+      setMensaje(`Cliente ${form.nombre} ${form.apellidoPaterno} registrado correctamente.`);
+      setTimeout(() => { setForm(INITIAL); setEstado(null); setMensaje(''); }, 3000);
+    } catch (e) {
+      setEstado('error');
+      setMensaje(e.message.includes('duplicate') ? 'Ya existe un cliente con ese CURP.' : e.message);
+      setTimeout(() => setEstado(null), 4000);
+    }
+  };
+
+  const handleReset = () => { setForm(INITIAL); setErrors({}); setEstado(null); setMensaje(''); };
 
   const inp = (err) => ({
-    border: `1.5px solid ${err ? '#ef4444' : '#e2e8f0'}`,
+    border: `1.5px solid ${err ? '#ef4444' : '#dceaf8'}`,
     borderRadius: '9px', padding: '10px 13px', fontSize: '13px',
-    fontFamily: 'DM Sans, sans-serif', color: '#0d1f5c', outline: 'none',
-    width: '100%', background: '#fafbfd', boxSizing: 'border-box',
+    fontFamily: 'DM Sans, sans-serif', color: '#1a3d6e', outline: 'none',
+    width: '100%', background: '#fafcff', boxSizing: 'border-box',
   });
 
   return (
     <div style={{ maxWidth: '820px', margin: '0 auto' }}>
 
-      {saved && (
-        <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: '10px', padding: '12px 18px', marginBottom: '20px', color: '#166534', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Save size={15} /> Cliente registrado correctamente.
+      {/* Notificación */}
+      {estado === 'ok' && (
+        <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: '12px', padding: '14px 18px', marginBottom: '20px', color: '#166534', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <CheckCircle size={16} /> {mensaje}
+        </div>
+      )}
+      {estado === 'error' && (
+        <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '12px', padding: '14px 18px', marginBottom: '20px', color: '#dc2626', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <AlertCircle size={16} /> {mensaje}
         </div>
       )}
 
       {SECCIONES.map(({ titulo, icon: Icon, campos }) => (
-        <div key={titulo} style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e4ecf5', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', marginBottom: '20px', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Icon size={17} color="#1565c0" />
-            <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '16px', fontWeight: '700', color: '#040e2e' }}>{titulo}</span>
+        <div key={titulo} style={{ background: '#fff', borderRadius: '16px', border: '1px solid #dceaf8', boxShadow: '0 2px 12px rgba(14,80,160,0.05)', marginBottom: '20px', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f6ff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '32px', height: '32px', background: '#e8f2fc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon size={16} color="#0e50a0" />
+            </div>
+            <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>{titulo}</span>
           </div>
           <div style={{ padding: '22px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
             {campos.map(({ label, name, type, opts }) => (
               <div key={name}>
-                <label style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '600', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>
                   {label} {REQUERIDOS.includes(name) && <span style={{ color: '#ef4444' }}>*</span>}
                 </label>
                 {type === 'select' ? (
@@ -127,13 +176,15 @@ export default function AltaCliente() {
       ))}
 
       <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '4px' }}>
-        <button onClick={handleReset} style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '11px 24px', fontSize: '13px', fontWeight: '600', color: '#64748b', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '7px' }}>
+        <button onClick={handleReset} style={{ background: '#fff', border: '1.5px solid #dceaf8', borderRadius: '10px', padding: '11px 24px', fontSize: '13px', fontWeight: '600', color: '#4a6a94', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '7px' }}>
           <RotateCcw size={14} /> Limpiar
         </button>
-        <button onClick={handleSave} style={{ background: '#1565c0', border: 'none', borderRadius: '10px', padding: '11px 28px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '7px' }}>
-          <Save size={14} /> Guardar cliente
+        <button onClick={handleSave} disabled={estado === 'loading'} style={{ background: estado === 'loading' ? '#90aac8' : '#0e50a0', border: 'none', borderRadius: '10px', padding: '11px 28px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: estado === 'loading' ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '7px', boxShadow: '0 4px 14px rgba(14,80,160,0.28)' }}>
+          {estado === 'loading' ? <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Guardando...</> : <><Save size={14} /> Guardar cliente</>}
         </button>
       </div>
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
