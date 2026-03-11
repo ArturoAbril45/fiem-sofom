@@ -1,177 +1,164 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Search, User, FileText, MapPin, Phone, Heart, Users,
-  ChevronDown, ChevronUp, AlertCircle, Loader, X, CheckCircle,
-  Edit2, Save, RotateCcw, Slash, ShieldOff, ShieldCheck,
-  DollarSign, Briefcase, Camera, Home, Eye
+  Search, User, ChevronDown, ChevronUp, AlertCircle, Loader,
+  X, CheckCircle, Save, ShieldOff, ShieldCheck, Slash, Eye,
+  FileText, DollarSign, Briefcase, MessageSquare, CreditCard, PiggyBank
 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://fiem-backend-production.up.railway.app';
 
-const fmt      = v => v || '—';
-const fmtMoney = v => v ? `$${Number(v).toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '—';
-const fmtFecha = v => { if (!v) return '—'; try { return new Date(v).toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' }); } catch { return v; } };
-
 const ESTADOS_MX = ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de Mexico','Coahuila de Zaragoza','Colima','Distrito Federal','Durango','Guanajuato','Guerrero','Hidalgo','Jalisco','Mexico','Michoacan','Morelos','Nayarit','Nuevo Leon','Oaxaca','Puebla','Queretaro','Quintana Roo','San Luis Potosi','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatan','Zacatecas'];
+const RUTAS_DEFAULT = ['Apaxco Sucursal-Apaxco','Tequix Sucursal-tequix','Huehue sucursal-Huehuetoca','Temas Sucursal-Temascalapa','Tizayuca 1 Sucursal-tizayuca1','OFC-CTRAL OFICINA CENTRAL','01-sucursa 01-sucursal-tula','01 Legal','01 Ajoloapan','01 APAXCO-2','02 TEOLOYUCAN'];
 
-// ── Pill estatus ──
-function Pill({ v }) {
-  const map = { 'Activo':{ bg:'#dcfce7', c:'#166534' }, 'Lista negra':{ bg:'#fee2e2', c:'#dc2626' }, 'Inactivo':{ bg:'#f3f4f6', c:'#6b7280' } };
-  const s = map[v] || map['Inactivo'];
-  return <span style={{ background:s.bg, color:s.c, borderRadius:'999px', padding:'3px 12px', fontSize:'12px', fontWeight:'700' }}>{v||'Sin estatus'}</span>;
-}
+const fmtFecha = v => { if (!v) return '—'; try { return new Date(v).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}); } catch { return v; } };
+const fmtMoney = v => v ? `$${Number(v).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '$0.00';
 
-// ── Campo de solo lectura ──
-function Dato({ label, value }) {
-  return (
-    <div>
-      <div style={{ fontSize:'10px', fontWeight:'700', color:'#90aac8', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'3px' }}>{label}</div>
-      <div style={{ fontSize:'13px', color:'#1a3d6e', fontWeight:'500' }}>{value || '—'}</div>
-    </div>
-  );
-}
+// ── Input simple ──
+const Inp = ({val, onChange, type='text', opts, placeholder='', readOnly=false, width='100%'}) => {
+  const s = { border:'1px solid #ccc', borderRadius:'3px', padding:'4px 8px', fontSize:'13px', fontFamily:'DM Sans, sans-serif', color:'#222', outline:'none', background: readOnly?'#f5f5f5':'#fff', width, boxSizing:'border-box' };
+  if (opts) return <select value={val||''} onChange={e=>onChange(e.target.value)} style={{...s,cursor:'pointer'}}><option value="">-Elige-</option>{opts.map(o=><option key={o} value={o}>{o}</option>)}</select>;
+  return <input type={type} value={val||''} onChange={readOnly?undefined:e=>onChange(e.target.value)} readOnly={readOnly} placeholder={placeholder} style={s}/>;
+};
 
-// ── Input edición ──
-function Inp({ val, onChange, type='text', opts }) {
-  const s = { border:'1.5px solid #dceaf8', borderRadius:'8px', padding:'8px 11px', fontSize:'13px', fontFamily:'DM Sans, sans-serif', color:'#1a3d6e', outline:'none', width:'100%', background:'#fafcff', boxSizing:'border-box' };
-  if (opts) return <select value={val||''} onChange={e=>onChange(e.target.value)} style={{ ...s, cursor:'pointer' }}><option value="">—</option>{opts.map(o=><option key={o} value={o}>{o}</option>)}</select>;
-  return <input type={type} value={val||''} onChange={e=>onChange(e.target.value)} style={s}/>;
-}
-
-// ── Sección colapsable ──
-function Sec({ icon:Icon, title, iconBg='#e8f2fc', iconColor='#0e50a0', children, open:initOpen=true }) {
-  const [open, setOpen] = useState(initOpen);
-  return (
-    <div style={{ background:'#fff', borderRadius:'14px', borderWidth:'1px', borderStyle:'solid', borderColor:'#dceaf8', boxShadow:'0 2px 10px rgba(14,80,160,0.05)', marginBottom:'16px', overflow:'hidden' }}>
-      <button onClick={()=>setOpen(o=>!o)} style={{ width:'100%', padding:'14px 22px', borderTopWidth:0, borderLeftWidth:0, borderRightWidth:0, borderBottomWidth: open?'1px':'0', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff', display:'flex', alignItems:'center', gap:'10px', background:'none', cursor:'pointer' }}>
-        <div style={{ width:'30px', height:'30px', background:iconBg, borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Icon size={15} color={iconColor}/></div>
-        <span style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'16px', fontWeight:'700', color:'#0a2d5e', flex:1, textAlign:'left' }}>{title}</span>
-        {open ? <ChevronUp size={15} color="#90aac8"/> : <ChevronDown size={15} color="#90aac8"/>}
-      </button>
-      {open && <div style={{ padding:'18px 22px' }}>{children}</div>}
-    </div>
-  );
-}
-
-// ── Grid ──
-const Grid = ({ children, min='200px' }) => (
-  <div style={{ display:'grid', gridTemplateColumns:`repeat(auto-fit, minmax(${min}, 1fr))`, gap:'14px' }}>{children}</div>
+// ── Fila label + input ──
+const Row = ({label, children, width='160px'}) => (
+  <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px'}}>
+    <span style={{fontSize:'13px', color:'#333', minWidth:width, flexShrink:0}}>{label}:</span>
+    {children}
+  </div>
 );
 
-// ── Miniatura foto con zoom ──
-function Foto({ src, label, onZoom }) {
-  if (!src || src.length < 10) return null;
+// ── Documento fila ──
+function DocRow({label, value, onChange}) {
+  const ref = typeof window !== 'undefined' ? require('react').useRef() : {current:null};
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'6px' }}>
-      <div onClick={()=>onZoom(src, label)} style={{ width:'90px', height:'90px', borderRadius:'10px', overflow:'hidden', cursor:'zoom-in', border:'2px solid #dceaf8' }}>
-        <img src={src} alt={label} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-      </div>
-      <span style={{ fontSize:'10px', color:'#4a6a94', fontWeight:'600', textAlign:'center' }}>{label}</span>
+    <div style={{display:'flex', alignItems:'center', gap:'12px', padding:'10px 0', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff'}}>
+      <span style={{fontSize:'13px', color:'#1a3d6e', flex:1}}>{label}</span>
+      <input ref={ref} type="file" accept="image/*,application/pdf" style={{display:'none'}}
+        onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>onChange(ev.target.result);r.readAsDataURL(f);}}/>
+      {value
+        ? <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+            <span style={{fontSize:'12px',color:'#0e50a0',fontWeight:'600',background:'#e8f2fc',padding:'3px 10px',borderRadius:'20px'}}>Cargado</span>
+            <button onClick={()=>onChange('')} style={{background:'none',border:'none',cursor:'pointer',color:'#ef4444',display:'flex'}}><X size={14}/></button>
+          </div>
+        : <button onClick={()=>ref.current?.click()} style={{background:'#17a2b8',color:'#fff',border:'none',borderRadius:'4px',padding:'5px 14px',fontSize:'12px',cursor:'pointer'}}>Seleccionar archivo</button>
+      }
+      {!value && <span style={{fontSize:'12px',color:'#999'}}>Ningún archivo seleccionado</span>}
     </div>
   );
 }
 
-// ── Documento con botón ver ──
-function DocItem({ label, value, onZoom }) {
-  if (!value) return (
-    <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 0', borderBottom:'1px solid #f5f8ff' }}>
-      <div style={{ width:'36px', height:'36px', background:'#f0f6ff', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center' }}><FileText size={16} color="#90aac8"/></div>
-      <span style={{ fontSize:'13px', color:'#90aac8', flex:1 }}>{label}</span>
-      <span style={{ fontSize:'11px', color:'#cbd5e1', fontStyle:'italic' }}>No cargado</span>
-    </div>
-  );
+// ── Foto zoom lightbox ──
+function Lightbox({src, label, onClose}) {
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 0', borderBottom:'1px solid #f5f8ff' }}>
-      <div style={{ width:'36px', height:'36px', background:'#e8f2fc', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center' }}><FileText size={16} color="#0e50a0"/></div>
-      <span style={{ fontSize:'13px', color:'#1a3d6e', fontWeight:'500', flex:1 }}>{label}</span>
-      <button onClick={()=>onZoom(value, label)} style={{ background:'#0e50a0', color:'#fff', border:'none', borderRadius:'7px', padding:'5px 14px', fontSize:'12px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px' }}><Eye size={13}/> Ver</button>
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:2000,cursor:'zoom-out',padding:'20px'}}>
+      <button onClick={onClose} style={{position:'fixed',top:'20px',right:'24px',background:'rgba(255,255,255,0.15)',border:'none',borderRadius:'50%',width:'40px',height:'40px',cursor:'pointer',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><X size={18}/></button>
+      <div style={{fontSize:'13px',color:'rgba(255,255,255,0.7)',marginBottom:'12px',fontWeight:'600'}}>{label}</div>
+      <img src={src} alt={label} onClick={e=>e.stopPropagation()} style={{maxWidth:'90vw',maxHeight:'80vh',borderRadius:'12px',objectFit:'contain'}}/>
     </div>
   );
 }
 
 export default function ConsultarCliente() {
-  const [busqueda,    setBusqueda]    = useState('');
-  const [clientes,    setClientes]    = useState([]);
-  const [selected,    setSelected]    = useState(null);
-  const [cargando,    setCargando]    = useState(false);
-  const [error,       setError]       = useState('');
-  const [editando,    setEditando]    = useState(false);
-  const [formEdit,    setFormEdit]    = useState({});
-  const [guardando,   setGuardando]   = useState(false);
-  const [msgOk,       setMsgOk]       = useState('');
-  const [zoom,        setZoom]        = useState(null); // { src, label }
-  const [modalBaja,   setModalBaja]   = useState(false);
-  const [motivoBaja,  setMotivoBaja]  = useState('');
-  const [montoBaja,   setMontoBaja]   = useState('');
-  const [procesando,  setProcesando]  = useState(false);
+  const [busqueda,   setBusqueda]   = useState('');
+  const [numCliente, setNumCliente] = useState('');
+  const [clientes,   setClientes]   = useState([]);
+  const [selected,   setSelected]   = useState(null);
+  const [form,       setForm]       = useState({});
+  const [cargando,   setCargando]   = useState(false);
+  const [guardando,  setGuardando]  = useState(false);
+  const [msgOk,      setMsgOk]      = useState('');
+  const [msgErr,     setMsgErr]     = useState('');
+  const [tab,        setTab]        = useState(0);
+  const [zoom,       setZoom]       = useState(null);
+  const [modalBaja,  setModalBaja]  = useState(false);
+  const [motivoBaja, setMotivoBaja] = useState('');
+  const [montoBaja,  setMontoBaja]  = useState('');
+  const [procesando, setProcesando] = useState(false);
+  const [solicitudes,setSolicitudes]= useState([]);
+  const [creditos,   setCreditos]   = useState([]);
+  const [cuentas,    setCuentas]    = useState([]);
 
-  // Cargar todos al iniciar
   useEffect(() => { fetchClientes(); }, []);
 
-  const fetchClientes = async (q='') => {
-    setCargando(true); setError('');
-    try {
-      const url = q ? `${API}/api/clientes?busqueda=${encodeURIComponent(q)}` : `${API}/api/clientes`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Error al cargar');
-      const data = await res.json();
-      setClientes(Array.isArray(data) ? data : []);
-    } catch(e) { setError(e.message); }
-    finally { setCargando(false); }
-  };
-
-  const handleBuscar = () => fetchClientes(busqueda);
-  const handleKeyDown = e => { if(e.key==='Enter') handleBuscar(); };
-
-  const seleccionar = async (id) => {
+  const fetchClientes = async (q='', num='') => {
     setCargando(true);
     try {
-      const res = await fetch(`${API}/api/clientes/${id}`);
+      let url = `${API}/api/clientes`;
+      const params = [];
+      if (q)   params.push(`busqueda=${encodeURIComponent(q)}`);
+      if (num) params.push(`busqueda=${encodeURIComponent(num)}`);
+      if (params.length) url += '?' + params[0];
+      const res  = await fetch(url);
       const data = await res.json();
-      setSelected(data); setEditando(false); setFormEdit({});
-    } catch(e) { setError(e.message); }
+      setClientes(Array.isArray(data) ? data : []);
+    } catch(e) { setMsgErr('Error al cargar clientes'); }
     finally { setCargando(false); }
   };
 
-  const iniciarEdicion = () => {
-    const base = { ...selected };
-    // Garantizar subobjetos para evitar errores en edición
-    base.conyuge        = base.conyuge        || {};
-    base.gastos         = base.gastos         || {};
-    base.documentos     = base.documentos     || {};
-    base.domicilioLaboral = base.domicilioLaboral || {};
-    base.estudioSocioeconomico = base.estudioSocioeconomico || {};
-    setFormEdit(base);
-    setEditando(true);
+  const handleBuscar = () => fetchClientes(busqueda, numCliente);
+
+  const seleccionar = async (id) => {
+    setCargando(true); setTab(0);
+    try {
+      const res  = await fetch(`${API}/api/clientes/${id}`);
+      const data = await res.json();
+      setSelected(data);
+      // Normalizar subobjetos
+      setForm({
+        ...data,
+        conyuge:             data.conyuge             || {},
+        gastos:              data.gastos              || {},
+        documentos:          data.documentos          || {},
+        domicilioLaboral:    data.domicilioLaboral    || {},
+        estudioSocioeconomico: data.estudioSocioeconomico || { electrodomesticos:{} },
+        referencias:         data.referencias         || [],
+      });
+      // Cargar datos relacionados
+      const [solRes, credRes, cuentasRes] = await Promise.all([
+        fetch(`${API}/api/solicitudes?clienteId=${id}`),
+        fetch(`${API}/api/creditos?clienteId=${id}`),
+        fetch(`${API}/api/cuentas-ahorro?clienteId=${id}`),
+      ]);
+      setSolicitudes(await solRes.json().catch(()=>[]));
+      setCreditos(await credRes.json().catch(()=>[]));
+      setCuentas(await cuentasRes.json().catch(()=>[]));
+    } catch(e) { setMsgErr('Error al cargar cliente'); }
+    finally { setCargando(false); }
   };
-  const cancelarEdicion = () => { setEditando(false); setFormEdit({}); };
 
   const ch = (path, val) => {
-    // Soporta paths anidados como "conyuge.nombre"
-    setFormEdit(prev => {
+    setForm(prev => {
       const parts = path.split('.');
-      if (parts.length === 1) return { ...prev, [path]: val };
-      const copy = { ...prev };
-      if (!copy[parts[0]]) copy[parts[0]] = {};
-      copy[parts[0]] = { ...copy[parts[0]], [parts[1]]: val };
-      return copy;
+      if (parts.length === 1) return {...prev, [path]: val};
+      if (parts.length === 2) return {...prev, [parts[0]]: {...(prev[parts[0]]||{}), [parts[1]]: val}};
+      if (parts.length === 3) return {...prev, [parts[0]]: {...(prev[parts[0]]||{}), [parts[1]]: {...((prev[parts[0]]||{})[parts[1]]||{}), [parts[2]]: val}}};
+      return prev;
     });
   };
 
-  const guardarEdicion = async () => {
+  const chRef = (i, field, val) => {
+    setForm(prev => {
+      const refs = [...(prev.referencias||[])];
+      refs[i] = {...(refs[i]||{}), [field]: val};
+      return {...prev, referencias: refs};
+    });
+  };
+
+  const guardar = async () => {
     setGuardando(true);
     try {
-      const res = await fetch(`${API}/api/clientes/${selected._id}`, {
-        method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(formEdit)
+      const res  = await fetch(`${API}/api/clientes/${selected._id}`, {
+        method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(form)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error||'Error');
-      setSelected(data); setEditando(false); setFormEdit({});
+      setSelected(data);
       setMsgOk('Cliente actualizado correctamente.');
       setTimeout(()=>setMsgOk(''), 3000);
       fetchClientes(busqueda);
-    } catch(e) { setError(e.message); setTimeout(()=>setError(''), 4000); }
+    } catch(e) { setMsgErr(e.message); setTimeout(()=>setMsgErr(''), 4000); }
     finally { setGuardando(false); }
   };
 
@@ -179,362 +166,503 @@ export default function ConsultarCliente() {
     if (!motivoBaja.trim()) return;
     setProcesando(true);
     try {
-      const esListaNegra = selected.estatus === 'Lista negra';
-      const nuevoEstatus = esListaNegra ? 'Activo' : 'Lista negra';
-      const payload = {
-        estatus: nuevoEstatus,
-        listaNegra: !esListaNegra,
-        motivoListaNegra: esListaNegra ? '' : motivoBaja,
-        montoAdeudado: esListaNegra ? 0 : (parseFloat(montoBaja)||0),
-      };
-      const res = await fetch(`${API}/api/clientes/${selected._id}`, {
-        method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
-      });
+      const esLN = selected.estatus === 'Lista negra';
+      const payload = { estatus: esLN?'Activo':'Lista negra', listaNegra:!esLN, motivoListaNegra: esLN?'':motivoBaja, montoAdeudado: esLN?0:(parseFloat(montoBaja)||0) };
+      const res  = await fetch(`${API}/api/clientes/${selected._id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error||'Error');
-      setSelected(data); setModalBaja(false); setMotivoBaja(''); setMontoBaja('');
-      setMsgOk(esListaNegra ? 'Cliente reactivado correctamente.' : 'Cliente enviado a lista negra.');
+      if (!res.ok) throw new Error(data.error);
+      setSelected(data); setForm(f=>({...f,...payload}));
+      setModalBaja(false); setMotivoBaja(''); setMontoBaja('');
+      setMsgOk(esLN ? 'Cliente reactivado.' : 'Cliente enviado a lista negra.');
       setTimeout(()=>setMsgOk(''), 3000);
       fetchClientes(busqueda);
-    } catch(e) { setError(e.message); }
+    } catch(e) { setMsgErr(e.message); }
     finally { setProcesando(false); }
   };
 
-  const c = editando ? formEdit : (selected || {});
+  const numTotal = clientes.length;
   const nombreCompleto = selected ? `${selected.apellidoP||''} ${selected.apellidoM||''} ${selected.nombre||''}`.trim() : '';
 
+  // Cálculos financieros
+  const ingresoTotal    = (parseFloat(form.ingresoMensual)||0) + (parseFloat(form.otrosIngresos)||0);
+  const gastos          = form.gastos || {};
+  const totalGasto      = ['alimento','luz','telefono','transporte','renta','inversion','creditos','otros'].reduce((a,k)=>a+(parseFloat(gastos[k])||0),0);
+  const totalDisponible = ingresoTotal - totalGasto;
+
+  const TABS = [
+    {label:'INFORMACION GENERAL',    icon:User},
+    {label:'INFORMACION FINANCIERA', icon:DollarSign},
+    {label:'DOCUMENTACION DIGITAL',  icon:FileText},
+    {label:'INFORMACION LABORAL',    icon:Briefcase},
+    {label:'ANOTACIONES',            icon:MessageSquare},
+    {label:'SOLICITUDES',            icon:FileText},
+    {label:'CREDITOS',               icon:CreditCard},
+    {label:'CUENTAS AHORRO',         icon:PiggyBank},
+  ];
+
+  // ── Estilos comunes ──
+  const card = {background:'#fff', borderRadius:'14px', borderWidth:'1px', borderStyle:'solid', borderColor:'#dceaf8', boxShadow:'0 2px 10px rgba(14,80,160,0.05)', marginBottom:'16px', overflow:'hidden'};
+  const secHead = {padding:'12px 20px', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff', fontFamily:"'Cormorant Garamond', serif", fontSize:'15px', fontWeight:'700', color:'#0a2d5e', background:'#f8fbff'};
+  const secBody = {padding:'16px 20px'};
+  const tblHead = {background:'#c8dfc8', padding:'8px 12px', fontSize:'13px', fontWeight:'700', color:'#333', textAlign:'left', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#aaa'};
+  const tblCell = {padding:'9px 12px', fontSize:'13px', color:'#222', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#eee'};
+
   return (
-    <div style={{ maxWidth:'900px', margin:'0 auto', fontFamily:'DM Sans, sans-serif' }}>
+    <div style={{maxWidth:'960px', margin:'0 auto', fontFamily:'DM Sans, sans-serif'}}>
 
-      {/* Alertas globales */}
-      {msgOk  && <div style={{ background:'#dcfce7', border:'1px solid #86efac', borderRadius:'12px', padding:'12px 18px', marginBottom:'16px', color:'#166534', fontSize:'13px', fontWeight:'600', display:'flex', alignItems:'center', gap:'8px' }}><CheckCircle size={15}/> {msgOk}</div>}
-      {error  && <div style={{ background:'#fee2e2', border:'1px solid #fca5a5', borderRadius:'12px', padding:'12px 18px', marginBottom:'16px', color:'#dc2626', fontSize:'13px', fontWeight:'600', display:'flex', alignItems:'center', gap:'8px' }}><AlertCircle size={15}/> {error}</div>}
+      {/* Alertas */}
+      {msgOk  && <div style={{background:'#dcfce7',border:'1px solid #86efac',borderRadius:'10px',padding:'11px 16px',marginBottom:'14px',color:'#166534',fontSize:'13px',fontWeight:'600',display:'flex',alignItems:'center',gap:'8px'}}><CheckCircle size={15}/>{msgOk}</div>}
+      {msgErr && <div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:'10px',padding:'11px 16px',marginBottom:'14px',color:'#dc2626',fontSize:'13px',fontWeight:'600',display:'flex',alignItems:'center',gap:'8px'}}><AlertCircle size={15}/>{msgErr}</div>}
 
-      {/* ── Buscador ── */}
-      <div style={{ background:'#fff', borderRadius:'14px', border:'1px solid #dceaf8', boxShadow:'0 2px 10px rgba(14,80,160,0.05)', padding:'18px 22px', marginBottom:'20px' }}>
-        <div style={{ display:'flex', gap:'10px', marginBottom:'14px' }}>
-          <div style={{ flex:1, position:'relative' }}>
-            <Search size={16} color="#90aac8" style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)' }}/>
-            <input
-              value={busqueda} onChange={e=>setBusqueda(e.target.value)} onKeyDown={handleKeyDown}
-              placeholder="Buscar por nombre, apellido o CURP..."
-              style={{ width:'100%', paddingLeft:'38px', paddingRight:'12px', paddingTop:'10px', paddingBottom:'10px', border:'1.5px solid #dceaf8', borderRadius:'10px', fontSize:'13px', fontFamily:'DM Sans, sans-serif', color:'#1a3d6e', outline:'none', background:'#fafcff', boxSizing:'border-box' }}
-            />
-          </div>
-          <button onClick={handleBuscar} style={{ background:'#0e50a0', color:'#fff', border:'none', borderRadius:'10px', padding:'0 22px', fontSize:'13px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
-            {cargando ? <Loader size={14} style={{ animation:'spin 1s linear infinite' }}/> : <Search size={14}/>} Buscar
-          </button>
-        </div>
-
-        {/* Tabla de resultados */}
-        {clientes.length > 0 ? (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'13px' }}>
-              <thead>
-                <tr style={{ background:'#f0f7ff' }}>
-                  {['Nombre completo','CURP','Celular','Ruta','Estatus',''].map(h => (
-                    <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:'11px', fontWeight:'700', color:'#4a6a94', textTransform:'uppercase', letterSpacing:'0.06em', borderBottom:'1px solid #dceaf8', whiteSpace:'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {clientes.map((cl, i) => (
-                  <tr key={cl._id} style={{ background: selected?._id===cl._id ? '#f0f7ff' : (i%2===0?'#fff':'#fafcff'), cursor:'pointer', transition:'background 0.1s' }}
-                    onClick={() => seleccionar(cl._id)}>
-                    <td style={{ padding:'10px 12px', borderBottom:'1px solid #f0f6ff', color:'#1a3d6e', fontWeight: selected?._id===cl._id?'700':'400' }}>
-                      {cl.apellidoP} {cl.apellidoM} {cl.nombre}
-                    </td>
-                    <td style={{ padding:'10px 12px', borderBottom:'1px solid #f0f6ff', color:'#4a6a94', fontFamily:'monospace', fontSize:'12px' }}>{cl.curp||'—'}</td>
-                    <td style={{ padding:'10px 12px', borderBottom:'1px solid #f0f6ff', color:'#4a6a94' }}>{cl.celular||'—'}</td>
-                    <td style={{ padding:'10px 12px', borderBottom:'1px solid #f0f6ff', color:'#4a6a94' }}>{cl.rutaVinculacion||'—'}</td>
-                    <td style={{ padding:'10px 12px', borderBottom:'1px solid #f0f6ff' }}><Pill v={cl.estatus}/></td>
-                    <td style={{ padding:'10px 12px', borderBottom:'1px solid #f0f6ff' }}>
-                      <button onClick={e=>{e.stopPropagation();seleccionar(cl._id);}} style={{ background:'#e8f2fc', color:'#0e50a0', border:'none', borderRadius:'7px', padding:'4px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>Ver</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div style={{ padding:'8px 12px', fontSize:'11px', color:'#90aac8' }}>{clientes.length} cliente{clientes.length!==1?'s':''} encontrado{clientes.length!==1?'s':''}</div>
-          </div>
-        ) : (
-          !cargando && <div style={{ textAlign:'center', padding:'20px', color:'#90aac8', fontSize:'13px' }}>
-            {busqueda ? 'No se encontraron clientes con esa búsqueda.' : 'No hay clientes registrados.'}
-          </div>
-        )}
-        {cargando && !selected && <div style={{ textAlign:'center', padding:'20px', color:'#90aac8' }}><Loader size={20} style={{ animation:'spin 1s linear infinite' }}/></div>}
-      </div>
-
-      {/* ── Detalle del cliente seleccionado ── */}
-      {selected && (
-        <div>
-          {/* Header cliente */}
-          <div style={{ background:'#fff', borderRadius:'14px', border:'1px solid #dceaf8', boxShadow:'0 2px 10px rgba(14,80,160,0.05)', padding:'20px 22px', marginBottom:'16px', display:'flex', alignItems:'center', gap:'16px', flexWrap:'wrap' }}>
-            <div style={{ width:'52px', height:'52px', background:'#e8f2fc', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              {(selected.documentos?.fotoPerfil || selected.fotos?.cliente)
-                ? <img src={selected.documentos?.fotoPerfil || selected.fotos?.cliente} alt="Foto" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }}/>
-                : <User size={24} color="#0e50a0"/>
-              }
-            </div>
-            <div style={{ flex:1, minWidth:'200px' }}>
-              <div style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'22px', fontWeight:'700', color:'#0a2d5e' }}>{nombreCompleto}</div>
-              <div style={{ display:'flex', gap:'12px', marginTop:'4px', flexWrap:'wrap', alignItems:'center' }}>
-                <Pill v={selected.estatus}/>
-                {selected.tipoCliente && <span style={{ fontSize:'12px', color:'#4a6a94', background:'#f0f6ff', padding:'2px 10px', borderRadius:'20px' }}>{selected.tipoCliente}</span>}
-                {selected.rutaVinculacion && <span style={{ fontSize:'12px', color:'#4a6a94' }}>{selected.rutaVinculacion}</span>}
-              </div>
-            </div>
-            {/* Botones de acción */}
-            <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
-              {!editando
-                ? <>
-                    <button onClick={iniciarEdicion} style={{ background:'#e8f2fc', color:'#0e50a0', border:'none', borderRadius:'9px', padding:'9px 18px', fontSize:'13px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
-                      <Edit2 size={14}/> Editar
-                    </button>
-                    <button onClick={()=>setModalBaja(true)} style={{ background: selected.estatus==='Lista negra'?'#dcfce7':'#fee2e2', color: selected.estatus==='Lista negra'?'#166534':'#dc2626', border:'none', borderRadius:'9px', padding:'9px 18px', fontSize:'13px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
-                      {selected.estatus==='Lista negra' ? <><ShieldCheck size={14}/> Reactivar</> : <><ShieldOff size={14}/> Lista negra</>}
-                    </button>
-                  </>
-                : <>
-                    <button onClick={guardarEdicion} disabled={guardando} style={{ background:'#0e50a0', color:'#fff', border:'none', borderRadius:'9px', padding:'9px 18px', fontSize:'13px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px', boxShadow:'0 4px 14px rgba(14,80,160,0.28)' }}>
-                      {guardando ? <><Loader size={13} style={{ animation:'spin 1s linear infinite' }}/> Guardando</> : <><Save size={14}/> Guardar</>}
-                    </button>
-                    <button onClick={cancelarEdicion} style={{ background:'#fff', border:'1.5px solid #dceaf8', borderRadius:'9px', padding:'9px 18px', fontSize:'13px', fontWeight:'600', color:'#4a6a94', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
-                      <RotateCcw size={13}/> Cancelar
-                    </button>
-                  </>
-              }
-            </div>
+      {/* ── LISTA DE CLIENTES ── */}
+      {!selected && (
+        <div style={card}>
+          <div style={{padding:'20px', textAlign:'center', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff'}}>
+            <h2 style={{fontFamily:"'Cormorant Garamond', serif", fontSize:'26px', fontWeight:'700', color:'#0a2d5e', margin:'0 0 4px'}}>Clientes activos</h2>
+            <p style={{fontSize:'13px', color:'#4a6a94', margin:0}}>Al tener puesto de Dirección General tienes acceso a toda la información</p>
           </div>
 
-          {/* Lista negra alerta */}
-          {selected.estatus==='Lista negra' && (
-            <div style={{ background:'#fee2e2', border:'1px solid #fca5a5', borderRadius:'12px', padding:'12px 18px', marginBottom:'16px', display:'flex', gap:'12px', alignItems:'flex-start' }}>
-              <Slash size={16} color="#dc2626" style={{ flexShrink:0, marginTop:'1px' }}/>
-              <div>
-                <div style={{ fontSize:'13px', fontWeight:'700', color:'#dc2626', marginBottom:'2px' }}>Cliente en lista negra</div>
-                {selected.motivoListaNegra && <div style={{ fontSize:'12px', color:'#ef4444' }}>Motivo: {selected.motivoListaNegra}</div>}
-                {selected.montoAdeudado>0 && <div style={{ fontSize:'12px', color:'#ef4444' }}>Monto adeudado: {fmtMoney(selected.montoAdeudado)}</div>}
-              </div>
-            </div>
-          )}
+          {/* Buscador */}
+          <div style={{padding:'16px 20px', display:'flex', gap:'10px', alignItems:'center', flexWrap:'wrap', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff'}}>
+            <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleBuscar()}
+              placeholder="Nombre o apellidos"
+              style={{border:'1px solid #ccc',borderRadius:'4px',padding:'6px 12px',fontSize:'13px',fontFamily:'DM Sans, sans-serif',outline:'none',width:'180px'}}/>
+            <span style={{fontSize:'13px',color:'#666'}}>o intente con</span>
+            <input value={numCliente} onChange={e=>setNumCliente(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleBuscar()}
+              placeholder="Numero cliente"
+              style={{border:'1px solid #ccc',borderRadius:'4px',padding:'6px 12px',fontSize:'13px',fontFamily:'DM Sans, sans-serif',outline:'none',width:'160px'}}/>
+            <button onClick={handleBuscar} style={{background:'#0e50a0',color:'#fff',border:'none',borderRadius:'6px',padding:'7px 20px',fontSize:'13px',fontWeight:'600',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}}>
+              {cargando ? <Loader size={14} style={{animation:'spin 1s linear infinite'}}/> : <Search size={14}/>} Realizar búsqueda
+            </button>
+          </div>
 
-          {/* ── Datos personales ── */}
-          <Sec icon={User} title="Datos personales">
-            <Grid>
-              {editando ? <>
-                <div><label style={lbl}>Nombre(s)</label><Inp val={c.nombre} onChange={v=>ch('nombre',v)}/></div>
-                <div><label style={lbl}>Apellido paterno</label><Inp val={c.apellidoP} onChange={v=>ch('apellidoP',v)}/></div>
-                <div><label style={lbl}>Apellido materno</label><Inp val={c.apellidoM} onChange={v=>ch('apellidoM',v)}/></div>
-                <div><label style={lbl}>Fecha nacimiento</label><Inp val={c.fechaNac?.substring?.(0,10)||''} onChange={v=>ch('fechaNac',v)} type="date"/></div>
-                <div><label style={lbl}>Lugar nacimiento</label><Inp val={c.lugarNacimiento} onChange={v=>ch('lugarNacimiento',v)} opts={ESTADOS_MX}/></div>
-                <div><label style={lbl}>Sexo</label><Inp val={c.sexo} onChange={v=>ch('sexo',v)} opts={['Masculino','Femenino']}/></div>
-                <div><label style={lbl}>Estado civil</label><Inp val={c.estadoCivil} onChange={v=>ch('estadoCivil',v)} opts={['Soltero(a)','Casado(a)','Union libre','Divorciado(a)','Viudo(a)']}/></div>
-                <div><label style={lbl}>CURP</label><Inp val={c.curp} onChange={v=>ch('curp',v.toUpperCase())}/></div>
-                <div><label style={lbl}>RFC</label><Inp val={c.rfc} onChange={v=>ch('rfc',v.toUpperCase())}/></div>
-                <div><label style={lbl}>INE/IFE</label><Inp val={c.ine} onChange={v=>ch('ine',v)}/></div>
-                <div><label style={lbl}>No. dependientes</label><Inp val={c.numDependientes} onChange={v=>ch('numDependientes',v)} type="number"/></div>
-              </> : <>
-                <Dato label="Nombre(s)" value={selected.nombre}/>
-                <Dato label="Apellido paterno" value={selected.apellidoP}/>
-                <Dato label="Apellido materno" value={selected.apellidoM}/>
-                <Dato label="Fecha de nacimiento" value={fmtFecha(selected.fechaNac)}/>
-                <Dato label="Lugar de nacimiento" value={selected.lugarNacimiento}/>
-                <Dato label="Sexo" value={selected.sexo}/>
-                <Dato label="Estado civil" value={selected.estadoCivil}/>
-                <Dato label="CURP" value={selected.curp}/>
-                <Dato label="RFC" value={selected.rfc}/>
-                <Dato label="No. INE/IFE" value={selected.ine}/>
-                <Dato label="No. dependientes económicos" value={selected.numDependientes}/>
-              </>}
-            </Grid>
-          </Sec>
-
-          {/* ── Contacto ── */}
-          <Sec icon={Phone} title="Contacto">
-            <Grid>
-              {editando ? <>
-                <div><label style={lbl}>Teléfono particular</label><Inp val={c.telefono} onChange={v=>ch('telefono',v)} type="tel"/></div>
-                <div><label style={lbl}>Teléfono oficina</label><Inp val={c.telefonoOficina} onChange={v=>ch('telefonoOficina',v)} type="tel"/></div>
-                <div><label style={lbl}>Celular</label><Inp val={c.celular} onChange={v=>ch('celular',v)} type="tel"/></div>
-                <div><label style={lbl}>Correo electrónico</label><Inp val={c.correo} onChange={v=>ch('correo',v)} type="email"/></div>
-              </> : <>
-                <Dato label="Teléfono particular" value={selected.telefono}/>
-                <Dato label="Teléfono oficina" value={selected.telefonoOficina}/>
-                <Dato label="Celular" value={selected.celular}/>
-                <Dato label="Correo electrónico" value={selected.correo}/>
-              </>}
-            </Grid>
-          </Sec>
-
-          {/* ── Domicilio ── */}
-          <Sec icon={MapPin} title="Domicilio">
-            <Grid>
-              {editando ? <>
-                <div><label style={lbl}>Calle</label><Inp val={c.calle} onChange={v=>ch('calle',v)}/></div>
-                <div><label style={lbl}>No. exterior</label><Inp val={c.numExt} onChange={v=>ch('numExt',v)}/></div>
-                <div><label style={lbl}>No. interior</label><Inp val={c.numInt} onChange={v=>ch('numInt',v)}/></div>
-                <div><label style={lbl}>Colonia</label><Inp val={c.colonia} onChange={v=>ch('colonia',v)}/></div>
-                <div><label style={lbl}>Municipio</label><Inp val={c.municipio} onChange={v=>ch('municipio',v)}/></div>
-                <div><label style={lbl}>Estado</label><Inp val={c.estado} onChange={v=>ch('estado',v)} opts={ESTADOS_MX}/></div>
-                <div><label style={lbl}>Código postal</label><Inp val={c.cp} onChange={v=>ch('cp',v)}/></div>
-                <div><label style={lbl}>Entre calles</label><Inp val={c.entreCalles1} onChange={v=>ch('entreCalles1',v)}/></div>
-                <div><label style={lbl}>Y de</label><Inp val={c.entreCalles2} onChange={v=>ch('entreCalles2',v)}/></div>
-                <div style={{ gridColumn:'1/-1' }}><label style={lbl}>Referencia adicional</label><Inp val={c.referenciaAdicional} onChange={v=>ch('referenciaAdicional',v)}/></div>
-              </> : <>
-                <Dato label="Calle" value={`${selected.calle||''} ${selected.numExt?`#${selected.numExt}`:''}${selected.numInt?` Int.${selected.numInt}`:''}`}/>
-                <Dato label="Colonia" value={selected.colonia}/>
-                <Dato label="Municipio" value={selected.municipio}/>
-                <Dato label="Estado" value={selected.estado}/>
-                <Dato label="Código postal" value={selected.cp}/>
-                {selected.entreCalles1 && <Dato label="Entre calles" value={`${selected.entreCalles1} y ${selected.entreCalles2||''}`}/>}
-                {selected.referenciaAdicional && <Dato label="Referencia" value={selected.referenciaAdicional}/>}
-              </>}
-            </Grid>
-          </Sec>
-
-          {/* ── Financiero ── */}
-          <Sec icon={DollarSign} title="Información financiera" open={false}>
-            <Grid>
-              <Dato label="Ingreso mensual" value={fmtMoney(selected.ingresoMensual)}/>
-              <Dato label="Otros ingresos" value={fmtMoney(selected.otrosIngresos)}/>
-              <Dato label="Ingreso total" value={fmtMoney(selected.ingresoTotal)}/>
-              <Dato label="Total gastos" value={fmtMoney(selected.totalGasto)}/>
-              <Dato label="Disponible mensual" value={fmtMoney(selected.totalDisponible)}/>
-              {selected.estudioSocioeconomico?.tipoVivienda && <Dato label="Tipo de vivienda" value={selected.estudioSocioeconomico.tipoVivienda}/>}
-            </Grid>
-            {selected.gastos && Object.values(selected.gastos).some(v=>Number(v)>0) && (
-              <div style={{ marginTop:'14px' }}>
-                <div style={{ fontSize:'11px', fontWeight:'700', color:'#90aac8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'10px' }}>Desglose de gastos</div>
-                <Grid min="140px">
-                  {[['Alimento','alimento'],['Luz','luz'],['Teléfono','telefono'],['Transporte','transporte'],['Renta','renta'],['Inversión','inversion'],['Créditos','creditos'],['Otros','otros']].map(([l,k])=>
-                    Number(selected.gastos[k])>0 ? <Dato key={k} label={l} value={fmtMoney(selected.gastos[k])}/> : null
-                  )}
-                </Grid>
-              </div>
+          {/* Tabla */}
+          <div style={{padding:'16px 20px'}}>
+            {numTotal > 0 && (
+              <p style={{fontSize:'13px',color:'#555',marginBottom:'12px'}}>
+                Existen <strong>{numTotal}</strong> clientes en tu cartera, solo se muestran los últimos 5 recientes para acelerar la carga
+              </p>
             )}
-          </Sec>
-
-          {/* ── Laboral ── */}
-          <Sec icon={Briefcase} title="Información laboral" open={false}>
-            <Grid>
-              {editando ? <>
-                <div><label style={lbl}>Fuente de ingresos</label><Inp val={c.fuenteIngresos} onChange={v=>ch('fuenteIngresos',v)} opts={['Empleo formal','Negocio propio','Pensionado','Honorarios','Otro']}/></div>
-                <div><label style={lbl}>Empresa</label><Inp val={c.empresa} onChange={v=>ch('empresa',v)}/></div>
-                <div><label style={lbl}>RFC empresa</label><Inp val={c.rfcEmpresa} onChange={v=>ch('rfcEmpresa',v.toUpperCase())}/></div>
-                <div><label style={lbl}>Ocupación</label><Inp val={c.ocupacion} onChange={v=>ch('ocupacion',v)}/></div>
-              </> : <>
-                <Dato label="Fuente de ingresos" value={selected.fuenteIngresos}/>
-                <Dato label="Empresa" value={selected.empresa}/>
-                <Dato label="RFC empresa" value={selected.rfcEmpresa}/>
-                <Dato label="Ocupación" value={selected.ocupacion}/>
-              </>}
-            </Grid>
-          </Sec>
-
-          {/* ── Cónyuge ── */}
-          {(selected.conyuge?.nombre || selected.estadoCivil==='Casado(a)' || selected.estadoCivil==='Union libre') && (
-            <Sec icon={Heart} title="Cónyuge" iconBg="#fce8f0" iconColor="#be185d" open={false}>
-              <div style={{ display:'flex', gap:'20px', alignItems:'flex-start', flexWrap:'wrap' }}>
-                <Grid>
-                  {editando ? <>
-                    <div><label style={lbl}>Nombre</label><Inp val={c.conyuge?.nombre} onChange={v=>ch('conyuge.nombre',v)}/></div>
-                    <div><label style={lbl}>Teléfono</label><Inp val={c.conyuge?.telefono} onChange={v=>ch('conyuge.telefono',v)}/></div>
-                    <div><label style={lbl}>Trabajo</label><Inp val={c.conyuge?.trabajo} onChange={v=>ch('conyuge.trabajo',v)}/></div>
-                    <div><label style={lbl}>Dirección trabajo</label><Inp val={c.conyuge?.direccionTrabajo} onChange={v=>ch('conyuge.direccionTrabajo',v)}/></div>
-                  </> : <>
-                    <Dato label="Nombre" value={selected.conyuge?.nombre}/>
-                    <Dato label="Teléfono" value={selected.conyuge?.telefono}/>
-                    <Dato label="Trabajo" value={selected.conyuge?.trabajo}/>
-                    <Dato label="Dirección trabajo" value={selected.conyuge?.direccionTrabajo}/>
-                  </>}
-                </Grid>
-                {selected.conyuge?.foto && <Foto src={selected.conyuge.foto} label="Foto cónyuge" onZoom={(s,l)=>setZoom({src:s,label:l})}/>}
-              </div>
-            </Sec>
-          )}
-
-          {/* ── Referencias ── */}
-          {selected.referencias?.filter(r => r.nombre)?.length > 0 && (
-            <Sec icon={Users} title="Referencias personales" open={false}>
-              <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-                {selected.referencias.filter(r => r.nombre).map((r,i) => (
-                  <div key={i} style={{ padding:'12px 16px', background:'#f8fbff', borderRadius:'10px', border:'1px solid #dceaf8' }}>
-                    <div style={{ fontSize:'11px', fontWeight:'700', color:'#0e50a0', textTransform:'uppercase', marginBottom:'8px' }}>Referencia {i+1}</div>
-                    <Grid min="180px">
-                      <Dato label="Nombre" value={r.nombre}/>
-                      <Dato label="Teléfono" value={r.telefono}/>
-                      <Dato label="Domicilio" value={r.domicilio || [r.calle, r.colonia, r.municipio].filter(Boolean).join(', ')}/>
-                      {r.parentesco && <Dato label="Parentesco" value={r.parentesco}/>}
-                    </Grid>
-                  </div>
-                ))}
-              </div>
-            </Sec>
-          )}
-
-          {/* ── Documentos / Fotos ── */}
-          <Sec icon={Camera} title="Documentos y fotografías" open={false}>
-            <div style={{ marginBottom:'16px' }}>
-              <div style={{ fontSize:'11px', fontWeight:'700', color:'#90aac8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'12px' }}>Fotografías</div>
-              <div style={{ display:'flex', gap:'20px', flexWrap:'wrap' }}>
-                <Foto src={selected.documentos?.fotoPerfil || selected.fotos?.cliente} label="Foto perfil / cliente" onZoom={(s,l)=>setZoom({src:s,label:l})}/>
-                <Foto src={selected.documentos?.fachadaCasa || selected.fotos?.casa} label="Fachada de casa" onZoom={(s,l)=>setZoom({src:s,label:l})}/>
-                <Foto src={selected.documentos?.fachadaNegocio || selected.fotos?.negocio} label="Fachada de negocio" onZoom={(s,l)=>setZoom({src:s,label:l})}/>
-              </div>
+            <div style={{overflowX:'auto'}}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead>
+                  <tr>
+                    <th style={tblHead}>Numero cliente (ID)</th>
+                    <th style={tblHead}>Clave cliente<br/><span style={{fontWeight:'400',fontSize:'11px'}}>Gerencia-ruta-#socio</span></th>
+                    <th style={tblHead}>Nombre</th>
+                    <th style={tblHead}></th>
+                    <th style={tblHead}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clientes.slice(0,20).map((cl,i) => (
+                    <tr key={cl._id} style={{background:i%2===0?'#fff':'#f9f9f9'}}>
+                      <td style={tblCell}>{cl._id?.slice(-6)||i+1}</td>
+                      <td style={tblCell}>{cl.rutaVinculacion||'—'}</td>
+                      <td style={{...tblCell,fontWeight:'500',textTransform:'uppercase'}}>{cl.apellidoP} {cl.apellidoM} {cl.nombre}</td>
+                      <td style={{...tblCell,width:'100px'}}>
+                        <button onClick={()=>seleccionar(cl._id)} style={{background:'#17a2b8',color:'#fff',border:'none',borderRadius:'4px',padding:'5px 14px',fontSize:'12px',cursor:'pointer',fontWeight:'600'}}>Consultar</button>
+                      </td>
+                      <td style={{...tblCell,width:'100px'}}>
+                        <button onClick={()=>seleccionar(cl._id)} style={{background:'#6c757d',color:'#fff',border:'none',borderRadius:'4px',padding:'5px 14px',fontSize:'12px',cursor:'pointer',fontWeight:'600'}}>Actualizar</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {clientes.length === 0 && !cargando && (
+                    <tr><td colSpan={5} style={{...tblCell,textAlign:'center',color:'#999'}}>No se encontraron clientes</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-            <div>
-              <div style={{ fontSize:'11px', fontWeight:'700', color:'#90aac8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'4px' }}>Documentos digitales</div>
-              {[
-                ['Comprobante domicilio',  selected.documentos?.comprobanteDomicilio],
-                ['Comprobante de ingresos',selected.documentos?.comprobanteIngresos],
-                ['Identificación oficial', selected.documentos?.identificacion],
-                ['Acta de nacimiento',     selected.documentos?.actaNacimiento],
-                ['CURP',                   selected.documentos?.curpDoc],
-              ].map(([label, val]) => (
-                <DocItem key={label} label={label} value={val} onZoom={(s,l)=>setZoom({src:s,label:l})}/>
-              ))}
-            </div>
-          </Sec>
-
+          </div>
         </div>
       )}
 
-      {/* ── Modal lista negra / reactivar ── */}
-      {modalBaja && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px' }}>
-          <div style={{ background:'#fff', borderRadius:'16px', padding:'28px', maxWidth:'420px', width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
-            <div style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'20px', fontWeight:'700', color:'#0a2d5e', marginBottom:'6px' }}>
-              {selected?.estatus==='Lista negra' ? 'Reactivar cliente' : 'Enviar a lista negra'}
+      {/* ── DETALLE DEL CLIENTE ── */}
+      {selected && (
+        <div>
+          {/* Header con foto */}
+          <div style={{...card, textAlign:'center', padding:'24px'}}>
+            <div style={{width:'100px',height:'100px',borderRadius:'50%',overflow:'hidden',margin:'0 auto 12px',border:'3px solid #dceaf8',cursor: (selected.documentos?.fotoPerfil||selected.fotos?.cliente)?'zoom-in':'default'}}
+              onClick={()=>{ const s=selected.documentos?.fotoPerfil||selected.fotos?.cliente; if(s) setZoom({src:s,label:'Foto de perfil'}); }}>
+              {(selected.documentos?.fotoPerfil||selected.fotos?.cliente)
+                ? <img src={selected.documentos?.fotoPerfil||selected.fotos?.cliente} alt="Foto" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                : <div style={{width:'100%',height:'100%',background:'#e8f2fc',display:'flex',alignItems:'center',justifyContent:'center'}}><User size={40} color="#90aac8"/></div>
+              }
             </div>
-            <div style={{ fontSize:'13px', color:'#4a6a94', marginBottom:'20px' }}>
-              {selected?.estatus==='Lista negra'
-                ? `¿Confirmas reactivar a ${nombreCompleto}?`
-                : `Esto bloqueará a ${nombreCompleto} del sistema.`}
+            <h2 style={{fontFamily:"'Cormorant Garamond', serif",fontSize:'22px',fontWeight:'700',color:'#0a2d5e',margin:'0 0 2px',textTransform:'uppercase'}}>{nombreCompleto}</h2>
+            <p style={{fontSize:'13px',color:'#4a6a94',margin:'0 0 2px'}}>{selected._id?.slice(-6)}</p>
+            <p style={{fontSize:'13px',color:'#4a6a94',margin:'0 0 14px'}}>Clave cliente: {selected.rutaVinculacion||'—'}</p>
+            {/* Botones acción */}
+            <div style={{display:'flex',gap:'8px',justifyContent:'center',flexWrap:'wrap'}}>
+              <button onClick={()=>{setSelected(null);setForm({});}} style={{background:'#e8f2fc',color:'#0e50a0',border:'none',borderRadius:'8px',padding:'8px 18px',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}>← Volver a lista</button>
+              <button onClick={guardar} disabled={guardando} style={{background:'#0e50a0',color:'#fff',border:'none',borderRadius:'8px',padding:'8px 20px',fontSize:'13px',fontWeight:'600',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',boxShadow:'0 4px 14px rgba(14,80,160,0.25)'}}>
+                {guardando ? <><Loader size={13} style={{animation:'spin 1s linear infinite'}}/> Guardando...</> : <><Save size={13}/> Guardar cambios</>}
+              </button>
+              <button onClick={()=>setModalBaja(true)} style={{background:selected.estatus==='Lista negra'?'#dcfce7':'#fee2e2',color:selected.estatus==='Lista negra'?'#166534':'#dc2626',border:'none',borderRadius:'8px',padding:'8px 18px',fontSize:'13px',fontWeight:'600',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}}>
+                {selected.estatus==='Lista negra' ? <><ShieldCheck size={13}/> Reactivar</> : <><ShieldOff size={13}/> Lista negra</>}
+              </button>
             </div>
-            <div style={{ marginBottom:'14px' }}>
-              <label style={{ ...lbl, display:'block', marginBottom:'6px' }}>
-                {selected?.estatus==='Lista negra' ? 'Motivo de reactivación' : 'Motivo de la baja'} *
-              </label>
-              <textarea value={motivoBaja} onChange={e=>setMotivoBaja(e.target.value)} rows={3}
-                style={{ width:'100%', border:'1.5px solid #dceaf8', borderRadius:'9px', padding:'10px 12px', fontSize:'13px', fontFamily:'DM Sans, sans-serif', color:'#1a3d6e', outline:'none', resize:'vertical', boxSizing:'border-box' }}
-                placeholder="Describe el motivo..."
-              />
-            </div>
-            {selected?.estatus !== 'Lista negra' && (
-              <div style={{ marginBottom:'20px' }}>
-                <label style={{ ...lbl, display:'block', marginBottom:'6px' }}>Monto adeudado ($)</label>
-                <input type="number" value={montoBaja} onChange={e=>setMontoBaja(e.target.value)}
-                  style={{ border:'1.5px solid #dceaf8', borderRadius:'9px', padding:'9px 12px', fontSize:'13px', fontFamily:'DM Sans, sans-serif', color:'#1a3d6e', outline:'none', width:'100%', background:'#fafcff', boxSizing:'border-box' }}
-                  placeholder="0.00"
-                />
+          </div>
+
+          {/* Alerta lista negra */}
+          {selected.estatus==='Lista negra' && (
+            <div style={{background:'#fee2e2',borderWidth:'1px',borderStyle:'solid',borderColor:'#fca5a5',borderRadius:'10px',padding:'12px 16px',marginBottom:'14px',display:'flex',gap:'10px',alignItems:'flex-start'}}>
+              <Slash size={15} color="#dc2626" style={{flexShrink:0,marginTop:'2px'}}/>
+              <div><strong style={{color:'#dc2626',fontSize:'13px'}}>Cliente en lista negra</strong>
+                {selected.motivoListaNegra && <div style={{fontSize:'12px',color:'#ef4444'}}>Motivo: {selected.motivoListaNegra}</div>}
+                {selected.montoAdeudado>0 && <div style={{fontSize:'12px',color:'#ef4444'}}>Adeudo: {fmtMoney(selected.montoAdeudado)}</div>}
               </div>
-            )}
-            <div style={{ display:'flex', gap:'10px', justifyContent:'flex-end' }}>
-              <button onClick={()=>{ setModalBaja(false); setMotivoBaja(''); setMontoBaja(''); }} style={{ background:'#fff', border:'1.5px solid #dceaf8', borderRadius:'9px', padding:'9px 20px', fontSize:'13px', fontWeight:'600', color:'#4a6a94', cursor:'pointer' }}>Cancelar</button>
+            </div>
+          )}
+
+          {/* ── PESTAÑAS ── */}
+          <div style={{...card, overflow:'hidden'}}>
+            <div style={{display:'flex', overflowX:'auto', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#ddd'}}>
+              {TABS.map(({label},i) => (
+                <button key={i} onClick={()=>setTab(i)} style={{padding:'10px 16px',border:'none',borderBottomWidth:'3px',borderBottomStyle:'solid',borderBottomColor:tab===i?'#0e50a0':'transparent',cursor:'pointer',fontSize:'11px',fontWeight:'700',color:tab===i?'#0e50a0':'#666',background:tab===i?'#f0f7ff':'transparent',fontFamily:'DM Sans, sans-serif',whiteSpace:'nowrap',letterSpacing:'0.04em'}}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{padding:'20px'}}>
+
+              {/* ══ TAB 0: INFORMACION GENERAL ══ */}
+              {tab===0 && <>
+                {/* Clasificación */}
+                <div style={{marginBottom:'16px'}}>
+                  <Row label="Tipo cliente" width="180px">
+                    <Inp val={form.tipoCliente} onChange={v=>ch('tipoCliente',v)} opts={['Titular Fisica','Aval','Titular Moral']}/>
+                  </Row>
+                  <Row label="Numero único del cliente" width="180px">
+                    <Inp val={selected._id?.slice(-6)} onChange={()=>{}} readOnly width="120px"/>
+                  </Row>
+                  <Row label="Ruta vinculacion" width="180px">
+                    <Inp val={form.rutaVinculacion} onChange={v=>ch('rutaVinculacion',v)} opts={RUTAS_DEFAULT}/>
+                  </Row>
+                  <Row label="Permitir acceso cliente en la web de socios" width="300px">
+                    <Inp val={form.accesoWeb} onChange={v=>ch('accesoWeb',v)} opts={['SI','NO']} width="80px"/>
+                  </Row>
+                </div>
+                <hr style={{border:'none',borderTopWidth:'1px',borderTopStyle:'solid',borderTopColor:'#eee',margin:'14px 0'}}/>
+
+                {/* Datos personales 2 columnas */}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2px 40px'}}>
+                  <Row label="Apellido Paterno"><Inp val={form.apellidoP} onChange={v=>ch('apellidoP',v)}/></Row>
+                  <Row label="Apellido Materno"><Inp val={form.apellidoM} onChange={v=>ch('apellidoM',v)}/></Row>
+                  <Row label="Nombre"><Inp val={form.nombre} onChange={v=>ch('nombre',v)}/></Row>
+                  <Row label="Telefono Particular"><Inp val={form.telefono} onChange={v=>ch('telefono',v)} type="tel"/></Row>
+                  <Row label="Telefono Oficina"><Inp val={form.telefonoOficina} onChange={v=>ch('telefonoOficina',v)} type="tel"/></Row>
+                  <Row label="Telefono Celular"><Inp val={form.celular} onChange={v=>ch('celular',v)} type="tel"/></Row>
+                  <Row label="Fecha Nacimiento"><Inp val={form.fechaNac?.toString().substring(0,10)||''} onChange={v=>ch('fechaNac',v)} type="date"/></Row>
+                  <Row label="Lugar Nacimiento"><Inp val={form.lugarNacimiento} onChange={v=>ch('lugarNacimiento',v)} opts={ESTADOS_MX}/></Row>
+                  <Row label="Sexo"><Inp val={form.sexo} onChange={v=>ch('sexo',v)} opts={['HOMBRE','MUJER']} width="120px"/></Row>
+                  <Row label="Estado Civil"><Inp val={form.estadoCivil} onChange={v=>ch('estadoCivil',v)} opts={['Soltero(a)','Casado(a)','Union libre','Divorciado(a)','Viudo(a)']}/></Row>
+                  <Row label="RFC"><Inp val={form.rfc} onChange={v=>ch('rfc',v.toUpperCase())} placeholder="Ingrese su RFC"/></Row>
+                  <Row label="Correo Electronico"><Inp val={form.correo} onChange={v=>ch('correo',v)} type="email"/></Row>
+                  <Row label="No Dependientes Economicos"><Inp val={form.numDependientes} onChange={v=>ch('numDependientes',v)} type="number" width="80px"/></Row>
+                  <Row label="CURP">
+                    <div style={{display:'flex',gap:'6px',width:'100%'}}>
+                      <button style={{background:'#17a2b8',color:'#fff',border:'none',borderRadius:'3px',padding:'3px 10px',fontSize:'12px',cursor:'pointer'}}>Generar</button>
+                      <Inp val={form.curp} onChange={v=>ch('curp',v.toUpperCase())}/>
+                    </div>
+                  </Row>
+                </div>
+
+                {/* Cónyuge */}
+                <h3 style={{fontSize:'17px',fontWeight:'700',color:'#222',margin:'18px 0 10px',borderBottomWidth:'2px',borderBottomStyle:'solid',borderBottomColor:'#0e50a0',paddingBottom:'4px',display:'inline-block'}}>Datos de conyugue</h3>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2px 40px',marginBottom:'10px'}}>
+                  <Row label="Nombre"><Inp val={form.conyuge?.nombre} onChange={v=>ch('conyuge.nombre',v)}/></Row>
+                  <Row label="Telefono"><Inp val={form.conyuge?.telefono} onChange={v=>ch('conyuge.telefono',v)} type="tel"/></Row>
+                  <Row label="Nombre Trabajo"><Inp val={form.conyuge?.trabajo} onChange={v=>ch('conyuge.trabajo',v)}/></Row>
+                  <Row label="Direccion trabajo"><Inp val={form.conyuge?.direccionTrabajo} onChange={v=>ch('conyuge.direccionTrabajo',v)}/></Row>
+                </div>
+
+                {/* Referencias */}
+                <h3 style={{fontSize:'17px',fontWeight:'700',color:'#222',margin:'18px 0 10px',borderBottomWidth:'2px',borderBottomStyle:'solid',borderBottomColor:'#0e50a0',paddingBottom:'4px',display:'inline-block'}}>Datos de referencia de contacto</h3>
+                {[0,1].map(i => (
+                  <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 1fr 2fr',gap:'6px',marginBottom:'6px'}}>
+                    <Row label="Nombre de la persona"><Inp val={form.referencias?.[i]?.nombre||''} onChange={v=>chRef(i,'nombre',v)}/></Row>
+                    <Row label="Telefono"><Inp val={form.referencias?.[i]?.telefono||''} onChange={v=>chRef(i,'telefono',v)} type="tel"/></Row>
+                    <Row label="Domicilio"><Inp val={form.referencias?.[i]?.domicilio||''} onChange={v=>chRef(i,'domicilio',v)}/></Row>
+                  </div>
+                ))}
+
+                {/* Domicilio */}
+                <h3 style={{fontSize:'17px',fontWeight:'700',color:'#222',margin:'18px 0 10px',borderBottomWidth:'2px',borderBottomStyle:'solid',borderBottomColor:'#0e50a0',paddingBottom:'4px',display:'inline-block'}}>Domicilio</h3>
+                {/* Historial de direcciones */}
+                <div style={{background:'#fafae8',border:'1px solid #ddd',borderRadius:'8px',padding:'14px',marginBottom:'14px'}}>
+                  <h4 style={{margin:'0 0 10px',fontSize:'14px',color:'#333',fontWeight:'700'}}>Direcciones registradas del cliente</h4>
+                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
+                    <thead>
+                      <tr style={{background:'#c8dfc8'}}>
+                        {['Fecha Agregada','CP','Estado','Municipio','Colonia','Calle','Numero exterior'].map(h=>(
+                          <th key={h} style={{padding:'7px 10px',textAlign:'left',fontWeight:'700',borderBottomWidth:'1px',borderBottomStyle:'solid',borderBottomColor:'#aaa'}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.updatedAt && (
+                        <tr>
+                          <td style={tblCell}>{fmtFecha(selected.updatedAt)}</td>
+                          <td style={tblCell}>{selected.cp||'—'}</td>
+                          <td style={tblCell}>{selected.estado||'—'}</td>
+                          <td style={tblCell}>{selected.municipio||'—'}</td>
+                          <td style={tblCell}>{selected.colonia||'—'}</td>
+                          <td style={tblCell}>{selected.calle||'—'}</td>
+                          <td style={tblCell}>{selected.numExt||'—'}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Campos editables de domicilio */}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2px 40px'}}>
+                  <Row label="Codigo postal">
+                    <div style={{display:'flex',gap:'6px',width:'100%'}}>
+                      <Inp val={form.cp} onChange={v=>ch('cp',v)} width="120px"/>
+                      <button style={{background:'#17a2b8',color:'#fff',border:'none',borderRadius:'3px',padding:'3px 12px',fontSize:'12px',cursor:'pointer'}}>BUSCAR</button>
+                    </div>
+                  </Row>
+                  <Row label="Calle"><Inp val={form.calle} onChange={v=>ch('calle',v)}/></Row>
+                  <Row label="Numero exterior"><Inp val={form.numExt} onChange={v=>ch('numExt',v)}/></Row>
+                  <Row label="Numero interior"><Inp val={form.numInt} onChange={v=>ch('numInt',v)}/></Row>
+                  <Row label="Entre las calles de"><Inp val={form.entreCalles1} onChange={v=>ch('entreCalles1',v)}/></Row>
+                  <Row label="Y de"><Inp val={form.entreCalles2} onChange={v=>ch('entreCalles2',v)}/></Row>
+                  <Row label="Colonia"><Inp val={form.colonia} onChange={v=>ch('colonia',v)}/></Row>
+                  <Row label="Municipio"><Inp val={form.municipio} onChange={v=>ch('municipio',v)}/></Row>
+                  <Row label="Estado"><Inp val={form.estado} onChange={v=>ch('estado',v)} opts={ESTADOS_MX}/></Row>
+                </div>
+                <div style={{marginTop:'6px'}}>
+                  <Row label="Referencia Adicional" width="180px">
+                    <Inp val={form.referenciaAdicional} onChange={v=>ch('referenciaAdicional',v)}/>
+                  </Row>
+                </div>
+                {/* Mapa placeholder */}
+                <div style={{marginTop:'16px',background:'#e8f2fc',borderRadius:'10px',height:'180px',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'6px',color:'#90aac8'}}>
+                  <span style={{fontSize:'13px',fontWeight:'600'}}>-Arrastra la flecha en el mapa para ubicar la casa del cliente</span>
+                  <span style={{fontSize:'11px'}}>Mapa de Google Maps</span>
+                </div>
+              </>}
+
+              {/* ══ TAB 1: INFORMACION FINANCIERA ══ */}
+              {tab===1 && <>
+                <div style={{background:'#fafae8',border:'1px solid #ddd',borderRadius:'8px',padding:'16px',marginBottom:'16px'}}>
+                  <div style={{background:'#c8dfc8',padding:'6px 10px',marginBottom:'10px',fontWeight:'700',fontSize:'13px'}}>Ingresos</div>
+                  <Row label="Ingreso mensual promedio" width="220px">
+                    <input type="number" value={form.ingresoMensual||'0'} onChange={e=>ch('ingresoMensual',e.target.value)} style={{border:'1px solid #ccc',borderRadius:'3px',padding:'4px 8px',fontSize:'13px',width:'130px'}}/>
+                  </Row>
+                  <Row label="Otros Ingresos" width="220px">
+                    <input type="number" value={form.otrosIngresos||'0'} onChange={e=>ch('otrosIngresos',e.target.value)} style={{border:'1px solid #ccc',borderRadius:'3px',padding:'4px 8px',fontSize:'13px',width:'130px'}}/>
+                  </Row>
+                  <Row label="Ingreso promedio total" width="220px">
+                    <input readOnly value={ingresoTotal} style={{border:'1px solid #ccc',borderRadius:'3px',padding:'4px 8px',fontSize:'13px',width:'130px',background:'#f0f0f0',fontWeight:'700'}}/>
+                  </Row>
+                  <div style={{background:'#c8dfc8',padding:'6px 10px',margin:'14px 0 10px',fontWeight:'700',fontSize:'13px'}}>Gasto promedio mensual</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:'4px 16px'}}>
+                    {[['Alimento','alimento'],['Luz','luz'],['Telefono','telefono'],['Transporte','transporte'],['Renta','renta'],['Inversion negocio','inversion'],['Creditos','creditos'],['Otros','otros']].map(([label,key])=>(
+                      <span key={key} style={{fontSize:'13px',display:'inline-flex',alignItems:'center',gap:'4px',marginBottom:'4px'}}>
+                        {label}:&nbsp;
+                        <input type="number" value={gastos[key]||''} onChange={e=>ch(`gastos.${key}`,e.target.value)} style={{border:'1px solid #ccc',borderRadius:'3px',padding:'3px 6px',fontSize:'13px',width:'90px'}}/>
+                      </span>
+                    ))}
+                  </div>
+                  <Row label="Total gasto" width="120px"><input readOnly value={totalGasto} style={{border:'1px solid #ccc',borderRadius:'3px',padding:'4px 8px',fontSize:'13px',width:'130px',background:'#f0f0f0',fontWeight:'700',color:'#dc2626'}}/></Row>
+                  <div style={{marginTop:'10px'}}>
+                    <span style={{fontSize:'13px'}}>Total Disponible mensual:&nbsp;<input readOnly value={totalDisponible} style={{border:'1px solid #ccc',borderRadius:'3px',padding:'4px 8px',fontSize:'13px',width:'130px',background:'#f0f0f0',fontWeight:'700',color:totalDisponible>=0?'#166534':'#dc2626'}}/></span>
+                  </div>
+                </div>
+
+                <div style={{textAlign:'center',fontWeight:'700',fontSize:'15px',margin:'10px 0'}}>Estudio socioeconómico</div>
+                <Row label="Tipo de Vivienda" width="160px">
+                  <Inp val={form.estudioSocioeconomico?.tipoVivienda} onChange={v=>ch('estudioSocioeconomico.tipoVivienda',v)} opts={['Propia','Rentada','Familiar']}/>
+                </Row>
+                <div style={{fontWeight:'700',fontSize:'13px',margin:'12px 0 8px',textAlign:'center'}}>Cuenta con estos electrodomésticos</div>
+                <div style={{display:'grid',gridTemplateColumns:'200px 1fr',gap:'6px',maxWidth:'420px'}}>
+                  {[['Refrigerador','refrigerador'],['Estufa','estufa'],['Lavadora','lavadora'],['Television','television'],['Licuadora','licuadora'],['Horno','horno'],['Computadora','computadora'],['Sala','sala'],['Celular','celular'],['Vehiculo (Marca,modelo)','vehiculo']].map(([label,key])=>(
+                    <React.Fragment key={key}>
+                      <span style={{fontSize:'13px'}}>{label}</span>
+                      <input value={form.estudioSocioeconomico?.electrodomesticos?.[key]||''} onChange={e=>ch(`estudioSocioeconomico.electrodomesticos.${key}`,e.target.value)} style={{border:'1px solid #ccc',borderRadius:'3px',padding:'3px 6px',fontSize:'13px',width:'120px'}}/>
+                    </React.Fragment>
+                  ))}
+                </div>
+              </>}
+
+              {/* ══ TAB 2: DOCUMENTACION DIGITAL ══ */}
+              {tab===2 && <>
+                <p style={{fontSize:'13px',color:'#4a6a94',background:'#f0f7ff',padding:'10px 14px',borderRadius:'8px',marginBottom:'16px',borderWidth:'1px',borderStyle:'solid',borderColor:'#dceaf8'}}>
+                  La documentación es opcional. Una vez cargado el cliente puedes actualizar los documentos posteriormente.
+                </p>
+                {[
+                  ['Comprobante domicilio',   'documentos.comprobanteDomicilio'],
+                  ['Comprobante de ingresos', 'documentos.comprobanteIngresos'],
+                  ['Identificacion oficial',  'documentos.identificacion'],
+                  ['Fotografia para perfil',  'documentos.fotoPerfil'],
+                  ['Acta Nacimiento',         'documentos.actaNacimiento'],
+                  ['CURP',                    'documentos.curpDoc'],
+                  ['Fachada de casa',         'documentos.fachadaCasa'],
+                  ['Fachada de Negocio',      'documentos.fachadaNegocio'],
+                ].map(([label, path]) => {
+                  const keys = path.split('.');
+                  const val  = keys.length===2 ? form[keys[0]]?.[keys[1]] : form[keys[0]];
+                  return <DocRow key={label} label={label} value={val||''} onChange={v=>ch(path,v)}/>;
+                })}
+                {/* Miniaturas de fotos cargadas */}
+                <div style={{marginTop:'20px',display:'flex',gap:'16px',flexWrap:'wrap'}}>
+                  {[
+                    ['Foto perfil',      form.documentos?.fotoPerfil||form.fotos?.cliente],
+                    ['Fachada casa',     form.documentos?.fachadaCasa||form.fotos?.casa],
+                    ['Fachada negocio',  form.documentos?.fachadaNegocio||form.fotos?.negocio],
+                    ['Cónyuge',          form.conyuge?.foto],
+                  ].filter(([,src])=>src&&src.length>10).map(([label,src])=>(
+                    <div key={label} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'4px'}}>
+                      <div onClick={()=>setZoom({src,label})} style={{width:'80px',height:'80px',borderRadius:'8px',overflow:'hidden',cursor:'zoom-in',borderWidth:'2px',borderStyle:'solid',borderColor:'#dceaf8'}}>
+                        <img src={src} alt={label} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                      </div>
+                      <span style={{fontSize:'10px',color:'#4a6a94',fontWeight:'600'}}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </>}
+
+              {/* ══ TAB 3: INFORMACION LABORAL ══ */}
+              {tab===3 && <>
+                <div style={{display:'flex',gap:'12px',alignItems:'center',flexWrap:'wrap',marginBottom:'12px'}}>
+                  <span style={{fontSize:'13px'}}>Fuente de ingresos:</span>
+                  <Inp val={form.fuenteIngresos} onChange={v=>ch('fuenteIngresos',v)} opts={['Empleo formal','Negocio propio','Pensionado','Honorarios','Otro']}/>
+                  <span style={{fontSize:'13px'}}>Nombre de la empresa:</span>
+                  <Inp val={form.empresa} onChange={v=>ch('empresa',v)} width="160px"/>
+                  <span style={{fontSize:'13px'}}>RFC:</span>
+                  <Inp val={form.rfcEmpresa} onChange={v=>ch('rfcEmpresa',v.toUpperCase())} width="130px"/>
+                </div>
+                <div style={{background:'#e8e8e8',padding:'5px 10px',fontWeight:'700',fontSize:'13px',marginBottom:'10px'}}>Domicilio laboral</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2px 40px'}}>
+                  <Row label="Codigo postal">
+                    <div style={{display:'flex',gap:'6px'}}>
+                      <Inp val={form.domicilioLaboral?.cp} onChange={v=>ch('domicilioLaboral.cp',v)} width="100px"/>
+                      <button style={{background:'#17a2b8',color:'#fff',border:'none',borderRadius:'3px',padding:'3px 10px',fontSize:'12px',cursor:'pointer'}}>BUSCAR</button>
+                    </div>
+                  </Row>
+                  <Row label="Calle"><Inp val={form.domicilioLaboral?.calle} onChange={v=>ch('domicilioLaboral.calle',v)}/></Row>
+                  <Row label="Numero exterior"><Inp val={form.domicilioLaboral?.numExt} onChange={v=>ch('domicilioLaboral.numExt',v)}/></Row>
+                  <Row label="Numero interior"><Inp val={form.domicilioLaboral?.numInt} onChange={v=>ch('domicilioLaboral.numInt',v)}/></Row>
+                  <Row label="Entre las calles de"><Inp val={form.domicilioLaboral?.entreCalles1} onChange={v=>ch('domicilioLaboral.entreCalles1',v)}/></Row>
+                  <Row label="Y de"><Inp val={form.domicilioLaboral?.entreCalles2} onChange={v=>ch('domicilioLaboral.entreCalles2',v)}/></Row>
+                </div>
+                <div style={{marginTop:'6px'}}>
+                  <Row label="Referencia Adicional" width="180px"><Inp val={form.domicilioLaboral?.referenciaAdicional} onChange={v=>ch('domicilioLaboral.referenciaAdicional',v)}/></Row>
+                </div>
+                <div style={{marginTop:'14px',background:'#e8f2fc',borderRadius:'8px',height:'160px',display:'flex',alignItems:'center',justifyContent:'center',color:'#90aac8',fontSize:'13px'}}>Mapa de Google Maps — arrastra el marcador</div>
+              </>}
+
+              {/* ══ TAB 4: ANOTACIONES ══ */}
+              {tab===4 && (
+                <div style={{color:'#90aac8',textAlign:'center',padding:'40px',fontSize:'14px'}}>
+                  Sin anotaciones registradas para este cliente.
+                </div>
+              )}
+
+              {/* ══ TAB 5: SOLICITUDES ══ */}
+              {tab===5 && (
+                <div style={{overflowX:'auto'}}>
+                  {Array.isArray(solicitudes) && solicitudes.length>0 ? (
+                    <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
+                      <thead><tr style={{background:'#c8dfc8'}}>
+                        {['Folio','Producto','Monto','Plazo','Estatus','Fecha'].map(h=><th key={h} style={tblHead}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {solicitudes.map((s,i)=>(
+                          <tr key={s._id} style={{background:i%2===0?'#fff':'#f9f9f9'}}>
+                            <td style={tblCell}>{s._id?.slice(-6)}</td>
+                            <td style={tblCell}>{s.producto||'—'}</td>
+                            <td style={tblCell}>{fmtMoney(s.monto)}</td>
+                            <td style={tblCell}>{s.plazo} {s.frecuencia}</td>
+                            <td style={tblCell}><span style={{background:s.estatus==='Aprobada'?'#dcfce7':s.estatus==='Rechazada'?'#fee2e2':'#fef3c7',color:s.estatus==='Aprobada'?'#166534':s.estatus==='Rechazada'?'#dc2626':'#92400e',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'700'}}>{s.estatus}</span></td>
+                            <td style={tblCell}>{s.fecha||fmtFecha(s.createdAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : <div style={{color:'#90aac8',textAlign:'center',padding:'40px',fontSize:'14px'}}>Sin solicitudes registradas.</div>}
+                </div>
+              )}
+
+              {/* ══ TAB 6: CREDITOS ══ */}
+              {tab===6 && (
+                <div style={{overflowX:'auto'}}>
+                  {Array.isArray(creditos) && creditos.length>0 ? (
+                    <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
+                      <thead><tr style={{background:'#c8dfc8'}}>
+                        {['Folio','Producto','Monto','Saldo','Pagos','Estatus'].map(h=><th key={h} style={tblHead}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {creditos.map((c,i)=>(
+                          <tr key={c._id} style={{background:i%2===0?'#fff':'#f9f9f9'}}>
+                            <td style={tblCell}>{c.folio||c._id?.slice(-6)}</td>
+                            <td style={tblCell}>{c.producto||'—'}</td>
+                            <td style={tblCell}>{fmtMoney(c.monto)}</td>
+                            <td style={tblCell}>{fmtMoney(c.saldo)}</td>
+                            <td style={tblCell}>{c.pagosRealizados||0}</td>
+                            <td style={tblCell}><span style={{background:c.estatus==='Vigente'?'#dcfce7':'#f3f4f6',color:c.estatus==='Vigente'?'#166534':'#6b7280',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'700'}}>{c.estatus}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : <div style={{color:'#90aac8',textAlign:'center',padding:'40px',fontSize:'14px'}}>Sin créditos registrados.</div>}
+                </div>
+              )}
+
+              {/* ══ TAB 7: CUENTAS AHORRO ══ */}
+              {tab===7 && (
+                <div style={{overflowX:'auto'}}>
+                  {Array.isArray(cuentas) && cuentas.length>0 ? (
+                    <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
+                      <thead><tr style={{background:'#c8dfc8'}}>
+                        {['Folio','Producto','Saldo','Estatus','Apertura'].map(h=><th key={h} style={tblHead}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {cuentas.map((c,i)=>(
+                          <tr key={c._id} style={{background:i%2===0?'#fff':'#f9f9f9'}}>
+                            <td style={tblCell}>{c.folio||c._id?.slice(-6)}</td>
+                            <td style={tblCell}>{c.producto||'—'}</td>
+                            <td style={tblCell}>{fmtMoney(c.saldo)}</td>
+                            <td style={tblCell}><span style={{background:c.estatus==='Activa'?'#dcfce7':'#f3f4f6',color:c.estatus==='Activa'?'#166534':'#6b7280',padding:'2px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'700'}}>{c.estatus}</span></td>
+                            <td style={tblCell}>{c.fechaApertura||fmtFecha(c.createdAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : <div style={{color:'#90aac8',textAlign:'center',padding:'40px',fontSize:'14px'}}>Sin cuentas de ahorro registradas.</div>}
+                </div>
+              )}
+
+            </div>{/* /padding */}
+          </div>{/* /card pestañas */}
+        </div>
+      )}
+
+      {/* ── Modal lista negra ── */}
+      {modalBaja && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:'20px'}}>
+          <div style={{background:'#fff',borderRadius:'14px',padding:'26px',maxWidth:'400px',width:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)'}}>
+            <h3 style={{fontFamily:"'Cormorant Garamond', serif",fontSize:'18px',fontWeight:'700',color:'#0a2d5e',margin:'0 0 6px'}}>
+              {selected?.estatus==='Lista negra' ? 'Reactivar cliente' : 'Enviar a lista negra'}
+            </h3>
+            <p style={{fontSize:'13px',color:'#4a6a94',margin:'0 0 16px'}}>{nombreCompleto}</p>
+            <label style={{fontSize:'12px',fontWeight:'600',color:'#4a6a94',display:'block',marginBottom:'5px'}}>MOTIVO *</label>
+            <textarea value={motivoBaja} onChange={e=>setMotivoBaja(e.target.value)} rows={3}
+              style={{width:'100%',border:'1px solid #ddd',borderRadius:'8px',padding:'9px',fontSize:'13px',fontFamily:'DM Sans, sans-serif',outline:'none',resize:'vertical',boxSizing:'border-box',marginBottom:'12px'}}/>
+            {selected?.estatus!=='Lista negra' && <>
+              <label style={{fontSize:'12px',fontWeight:'600',color:'#4a6a94',display:'block',marginBottom:'5px'}}>MONTO ADEUDADO ($)</label>
+              <input type="number" value={montoBaja} onChange={e=>setMontoBaja(e.target.value)}
+                style={{width:'100%',border:'1px solid #ddd',borderRadius:'8px',padding:'9px',fontSize:'13px',outline:'none',boxSizing:'border-box',marginBottom:'16px'}}/>
+            </>}
+            <div style={{display:'flex',gap:'8px',justifyContent:'flex-end'}}>
+              <button onClick={()=>{setModalBaja(false);setMotivoBaja('');setMontoBaja('');}} style={{background:'#fff',border:'1px solid #ddd',borderRadius:'8px',padding:'8px 18px',fontSize:'13px',fontWeight:'600',color:'#4a6a94',cursor:'pointer'}}>Cancelar</button>
               <button onClick={confirmarBaja} disabled={!motivoBaja.trim()||procesando}
-                style={{ background: selected?.estatus==='Lista negra'?'#0e50a0':'#dc2626', color:'#fff', border:'none', borderRadius:'9px', padding:'9px 20px', fontSize:'13px', fontWeight:'600', cursor: !motivoBaja.trim()?'not-allowed':'pointer', opacity: !motivoBaja.trim()?0.6:1, display:'flex', alignItems:'center', gap:'6px' }}>
-                {procesando ? <Loader size={13} style={{ animation:'spin 1s linear infinite' }}/> : null}
+                style={{background:selected?.estatus==='Lista negra'?'#0e50a0':'#dc2626',color:'#fff',border:'none',borderRadius:'8px',padding:'8px 18px',fontSize:'13px',fontWeight:'600',cursor:!motivoBaja.trim()?'not-allowed':'pointer',opacity:!motivoBaja.trim()?0.6:1,display:'flex',alignItems:'center',gap:'6px'}}>
+                {procesando && <Loader size={12} style={{animation:'spin 1s linear infinite'}}/>}
                 {selected?.estatus==='Lista negra' ? 'Reactivar' : 'Confirmar baja'}
               </button>
             </div>
@@ -542,18 +670,10 @@ export default function ConsultarCliente() {
         </div>
       )}
 
-      {/* ── Lightbox zoom foto / documento ── */}
-      {zoom && (
-        <div onClick={()=>setZoom(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', zIndex:2000, cursor:'zoom-out', padding:'20px' }}>
-          <button onClick={()=>setZoom(null)} style={{ position:'fixed', top:'20px', right:'24px', background:'rgba(255,255,255,0.15)', border:'none', borderRadius:'50%', width:'40px', height:'40px', cursor:'pointer', color:'#fff', fontSize:'20px', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={18}/></button>
-          <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.7)', marginBottom:'12px', fontWeight:'600' }}>{zoom.label}</div>
-          <img src={zoom.src} alt={zoom.label} onClick={e=>e.stopPropagation()} style={{ maxWidth:'90vw', maxHeight:'80vh', borderRadius:'12px', boxShadow:'0 20px 60px rgba(0,0,0,0.5)', objectFit:'contain' }}/>
-        </div>
-      )}
+      {/* Lightbox */}
+      {zoom && <Lightbox src={zoom.src} label={zoom.label} onClose={()=>setZoom(null)}/>}
 
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
-
-const lbl = { fontSize:'11px', fontWeight:'600', color:'#90aac8', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'5px' };
