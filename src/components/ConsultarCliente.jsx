@@ -43,8 +43,8 @@ function Inp({ val, onChange, type='text', opts }) {
 function Sec({ icon:Icon, title, iconBg='#e8f2fc', iconColor='#0e50a0', children, open:initOpen=true }) {
   const [open, setOpen] = useState(initOpen);
   return (
-    <div style={{ background:'#fff', borderRadius:'14px', border:'1px solid #dceaf8', boxShadow:'0 2px 10px rgba(14,80,160,0.05)', marginBottom:'16px', overflow:'hidden' }}>
-      <button onClick={()=>setOpen(o=>!o)} style={{ width:'100%', padding:'14px 22px', borderBottom: open?'1px solid #f0f6ff':'none', display:'flex', alignItems:'center', gap:'10px', background:'none', border:'none', cursor:'pointer' }}>
+    <div style={{ background:'#fff', borderRadius:'14px', borderWidth:'1px', borderStyle:'solid', borderColor:'#dceaf8', boxShadow:'0 2px 10px rgba(14,80,160,0.05)', marginBottom:'16px', overflow:'hidden' }}>
+      <button onClick={()=>setOpen(o=>!o)} style={{ width:'100%', padding:'14px 22px', borderTopWidth:0, borderLeftWidth:0, borderRightWidth:0, borderBottomWidth: open?'1px':'0', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff', display:'flex', alignItems:'center', gap:'10px', background:'none', cursor:'pointer' }}>
         <div style={{ width:'30px', height:'30px', background:iconBg, borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Icon size={15} color={iconColor}/></div>
         <span style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'16px', fontWeight:'700', color:'#0a2d5e', flex:1, textAlign:'left' }}>{title}</span>
         {open ? <ChevronUp size={15} color="#90aac8"/> : <ChevronDown size={15} color="#90aac8"/>}
