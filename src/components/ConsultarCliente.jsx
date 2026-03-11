@@ -76,6 +76,7 @@ export default function ConsultarCliente() {
   const [formEdit,  setFormEdit]  = useState({});
   const [guardando, setGuardando] = useState(false);
   const [msgOk,     setMsgOk]     = useState('');
+  const [fotoZoom,  setFotoZoom]  = useState(null); // { src, label }
 
   const fetchClientes = async (q = '') => {
     setCargando(true); setError('');
@@ -421,7 +422,18 @@ export default function ConsultarCliente() {
                 { key: 'negocio', label: 'Foto del negocio' },
               ].map(({ key, label }) => (
                 <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '140px', height: '140px', borderRadius: '12px', overflow: 'hidden', border: `2px solid ${selected.fotos?.[key] ? '#0e50a0' : '#dceaf8'}`, background: '#f4f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div
+                    onClick={() => selected.fotos?.[key] && setFotoZoom({ src: selected.fotos[key], label })}
+                    style={{
+                      width: '140px', height: '140px', borderRadius: '12px', overflow: 'hidden',
+                      border: `2px solid ${selected.fotos?.[key] ? '#0e50a0' : '#dceaf8'}`,
+                      background: '#f4f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: selected.fotos?.[key] ? 'zoom-in' : 'default',
+                      transition: 'transform 0.15s, box-shadow 0.15s',
+                    }}
+                    onMouseEnter={e => { if (selected.fotos?.[key]) { e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(14,80,160,0.18)'; }}}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
+                  >
                     {selected.fotos?.[key]
                       ? <img src={selected.fotos[key]} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       : <div style={{ textAlign: 'center', color: '#c0d4ea' }}>
@@ -431,10 +443,58 @@ export default function ConsultarCliente() {
                     }
                   </div>
                   <span style={{ fontSize: '12px', fontWeight: '600', color: '#4a6a94' }}>{label}</span>
+                  {selected.fotos?.[key] && (
+                    <span style={{ fontSize: '10px', color: '#90aac8' }}>Clic para ampliar</span>
+                  )}
                 </div>
               ))}
             </div>
           </Seccion>
+
+          {/* ── LIGHTBOX ── */}
+          {fotoZoom && (
+            <div
+              onClick={() => setFotoZoom(null)}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 2000,
+                background: 'rgba(5,15,40,0.88)', backdropFilter: 'blur(6px)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                padding: '24px', cursor: 'zoom-out',
+              }}
+            >
+              <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '80vh' }}>
+                <img
+                  src={fotoZoom.src}
+                  alt={fotoZoom.label}
+                  style={{
+                    maxWidth: '90vw', maxHeight: '78vh',
+                    borderRadius: '16px', boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+                    objectFit: 'contain', display: 'block',
+                  }}
+                  onClick={e => e.stopPropagation()}
+                />
+                <button
+                  onClick={() => setFotoZoom(null)}
+                  style={{
+                    position: 'absolute', top: '-14px', right: '-14px',
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    background: '#fff', border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    color: '#0a2d5e', fontWeight: '700',
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div style={{ marginTop: '16px', color: '#fff', fontSize: '14px', fontWeight: '600', opacity: 0.85 }}>
+                {fotoZoom.label}
+              </div>
+              <div style={{ marginTop: '6px', color: '#90aac8', fontSize: '12px' }}>
+                Clic fuera de la imagen para cerrar
+              </div>
+            </div>
+          )}
 
           {/* ── REFERENCIAS ── */}
           {selected.referencias?.length > 0 && (
