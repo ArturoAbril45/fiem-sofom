@@ -44,6 +44,8 @@ export default function NuevaSolicitud() {
   const [msgOk,         setMsgOk]        = useState('');
   const [msgErr,        setMsgErr]       = useState('');
   const [enviando,      setEnviando]     = useState(false);
+  const [modalPlan,     setModalPlan]    = useState(false);
+  const [tablaPlan,     setTablaPlan]    = useState([]);
 
   // Cliente
   const [numSocio,      setNumSocio]     = useState('');
@@ -122,13 +124,51 @@ export default function NuevaSolicitud() {
   const totalDisp     = ingresoTotal - totalGasto;
 
   const simularPlan = () => {
-    if (!monto || !plazo || !tasaInteres) { setMsgErr('Completa monto, plazo y tasa de interés para simular.'); setTimeout(()=>setMsgErr(''),3000); return; }
-    const m = parseFloat(monto);
-    const t = parseFloat(tasaInteres)/100;
-    const p = parseInt(plazo);
-    const pago = (m * t) / (1 - Math.pow(1+t, -p));
-    setMsgOk(`Plan simulado: ${p} pagos de ${fmtMoney(pago)} (${formaPago.toLowerCase()}). Total: ${fmtMoney(pago*p)}`);
-    setTimeout(()=>setMsgOk(''),6000);
+    if (!monto || !plazo || !tasaInteres) {
+      setMsgErr('Completa monto, plazo y tasa de interés para simular.');
+      setTimeout(()=>setMsgErr(''),3000); return;
+    }
+    const capital   = parseFloat(monto) || 0;
+    const tasaP     = parseFloat(tasaInteres) / 100; // tasa por periodo
+    const periodos  = parseInt(plazo) || 1;
+    const ivaP      = parseFloat(iva) / 100 || 0;
+
+    // Calcular pago fijo (sistema francés / cuota nivelada)
+    let pagoPeriodo;
+    if (tasaP === 0) {
+      pagoPeriodo = capital / periodos;
+    } else {
+      pagoPeriodo = (capital * tasaP) / (1 - Math.pow(1 + tasaP, -periodos));
+    }
+
+    // Calcular fecha base según forma de pago
+    const hoy = new Date();
+    const diasSalto = { DIARIA:1, SEMANAL:7, CATORCENAL:14, QUINCENAL:15, MENSUAL:30 };
+    const salto = diasSalto[formaPago] || 7;
+
+    const filas = [];
+    let saldo = capital;
+    for (let i = 1; i <= periodos; i++) {
+      const fechaPago = new Date(hoy);
+      fechaPago.setDate(hoy.getDate() + salto * i);
+      const interes     = saldo * tasaP;
+      const ivaMonto    = interes * ivaP;
+      const abonoCapital = pagoPeriodo - interes - ivaMonto;
+      const pagoTotal   = pagoPeriodo + ivaMonto;
+      saldo = Math.max(saldo - abonoCapital, 0);
+      filas.push({
+        periodo:   i,
+        fecha:     fechaPago.toLocaleDateString('es-MX', {year:'numeric',month:'2-digit',day:'2-digit'}),
+        capitalPendiente: saldo + abonoCapital, // antes del abono
+        abonoCapital: Math.max(abonoCapital, 0),
+        interes,
+        iva: ivaMonto,
+        pagoTotal,
+        saldoFinal: saldo,
+      });
+    }
+    setTablaPlan(filas);
+    setModalPlan(true);
   };
 
   const enviarSolicitud = async () => {
@@ -484,6 +524,68 @@ export default function NuevaSolicitud() {
         </button>
       </div>
 
+
+      {/* ── Modal Simulación ── */}
+      {modalPlan && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', display:'flex', alignItems:'flex-start', justifyContent:'center', zIndex:2000, padding:'20px', overflowY:'auto' }}>
+          <div style={{ background:'#fff', borderRadius:'16px', width:'100%', maxWidth:'900px', boxShadow:'0 20px 60px rgba(0,0,0,0.3)', marginTop:'20px' }}>
+            {/* Header */}
+            <div style={{ background:'#0d1f5c', borderRadius:'16px 16px 0 0', padding:'16px 24px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div>
+                <h3 style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'20px', fontWeight:'700', color:'#fff', margin:0 }}>Simulación de tabla de pagos</h3>
+                <p style={{ fontSize:'12px', color:'rgba(255,255,255,0.7)', margin:'2px 0 0' }}>
+                  {productoSel?.nombre} — {fmtMoney(parseFloat(monto)||0)} — {plazo} periodos {formaPago.toLowerCase()}
+                </p>
+              </div>
+              <button onClick={()=>setModalPlan(false)} style={{ background:'rgba(255,255,255,0.15)', border:'none', borderRadius:'8px', padding:'7px 10px', cursor:'pointer', color:'#fff', display:'flex', alignItems:'center' }}><X size={18}/></button>
+            </div>
+            {/* Tabla */}
+            <div style={{ overflowX:'auto', padding:'0' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'13px' }}>
+                <thead>
+                  <tr style={{ background:'#0d1f5c' }}>
+                    {['Periodo','Fecha pago','Capital Pendiente','Abono capital','Interés','IVA','Pago total','Saldo final'].map(h=>(
+                      <th key={h} style={{ padding:'10px 14px', color:'#fff', fontWeight:'700', fontSize:'12px', textAlign:'right', whiteSpace:'nowrap', borderRightWidth:'1px', borderRightStyle:'solid', borderRightColor:'rgba(255,255,255,0.1)' }}>
+                        {h==='Periodo'||h==='Fecha pago' ? <span style={{textAlign:'center',display:'block'}}>{h}</span> : h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tablaPlan.map((f,i)=>(
+                    <tr key={i} style={{ background: i%2===0?'#fff':'#f8fbff' }}>
+                      <td style={{ padding:'9px 14px', textAlign:'center', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff', fontWeight:'700', color:'#0e50a0' }}>{f.periodo}</td>
+                      <td style={{ padding:'9px 14px', textAlign:'center', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff', fontFamily:'monospace', fontSize:'12px' }}>{f.fecha}</td>
+                      <td style={{ padding:'9px 14px', textAlign:'right', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff' }}>{fmtMoney(f.capitalPendiente)}</td>
+                      <td style={{ padding:'9px 14px', textAlign:'right', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff', color:'#166534', fontWeight:'600' }}>{fmtMoney(f.abonoCapital)}</td>
+                      <td style={{ padding:'9px 14px', textAlign:'right', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff', color:'#dc2626' }}>{fmtMoney(f.interes)}</td>
+                      <td style={{ padding:'9px 14px', textAlign:'right', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff' }}>{fmtMoney(f.iva)}</td>
+                      <td style={{ padding:'9px 14px', textAlign:'right', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff', fontWeight:'700', color:'#0a2d5e' }}>{fmtMoney(f.pagoTotal)}</td>
+                      <td style={{ padding:'9px 14px', textAlign:'right', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#f0f6ff', color: f.saldoFinal<1?'#166534':'#1a3d6e', fontWeight:'600' }}>{fmtMoney(f.saldoFinal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                {/* Totales */}
+                <tfoot>
+                  <tr style={{ background:'#0d1f5c' }}>
+                    <td colSpan={2} style={{ padding:'10px 14px', color:'#fff', fontWeight:'700', fontSize:'13px' }}>TOTALES</td>
+                    <td style={{ padding:'10px 14px', textAlign:'right', color:'rgba(255,255,255,0.7)' }}>—</td>
+                    <td style={{ padding:'10px 14px', textAlign:'right', color:'#86efac', fontWeight:'700' }}>{fmtMoney(tablaPlan.reduce((a,f)=>a+f.abonoCapital,0))}</td>
+                    <td style={{ padding:'10px 14px', textAlign:'right', color:'#fca5a5', fontWeight:'700' }}>{fmtMoney(tablaPlan.reduce((a,f)=>a+f.interes,0))}</td>
+                    <td style={{ padding:'10px 14px', textAlign:'right', color:'rgba(255,255,255,0.8)', fontWeight:'700' }}>{fmtMoney(tablaPlan.reduce((a,f)=>a+f.iva,0))}</td>
+                    <td style={{ padding:'10px 14px', textAlign:'right', color:'#fff', fontWeight:'700', fontSize:'14px' }}>{fmtMoney(tablaPlan.reduce((a,f)=>a+f.pagoTotal,0))}</td>
+                    <td style={{ padding:'10px 14px', textAlign:'right', color:'rgba(255,255,255,0.7)' }}>—</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            {/* Footer */}
+            <div style={{ padding:'16px 24px', borderTopWidth:'1px', borderTopStyle:'solid', borderTopColor:'#dceaf8', display:'flex', justifyContent:'flex-end' }}>
+              <button onClick={()=>setModalPlan(false)} style={{ background:'#0e50a0', color:'#fff', border:'none', borderRadius:'9px', padding:'10px 28px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
   );
