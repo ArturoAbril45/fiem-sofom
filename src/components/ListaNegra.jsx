@@ -13,12 +13,19 @@ export default function ListaNegra() {
   const [lista,         setLista]         = useState([]);
   const [modal,         setModal]         = useState(false);
   const [confirmarElim, setConfirmarElim] = useState(null);
-  const [form,          setForm]          = useState({ nombre: '', curp: '', motivo: '', monto: '' });
   const [cargando,      setCargando]      = useState(true);
   const [guardando,     setGuardando]     = useState(false);
   const [eliminando,    setEliminando]    = useState(false);
   const [notif,         setNotif]         = useState(null);
   const [errorConn,     setErrorConn]     = useState('');
+
+  // Para el modal — buscar cliente existente
+  const [busModal,      setBusModal]      = useState('');
+  const [clientesAll,   setClientesAll]   = useState([]);
+  const [clienteSel,    setClienteSel]    = useState(null);
+  const [motivo,        setMotivo]        = useState('');
+  const [montoAdeudado, setMontoAdeudado] = useState('');
+  const [showDrop,      setShowDrop]      = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true); setErrorConn('');
@@ -33,7 +40,27 @@ export default function ListaNegra() {
     }
   }, []);
 
+  const cargarClientes = useCallback(async () => {
+    try {
+      const res  = await fetch(`${API}/api/clientes`);
+      const data = await res.json();
+      // Solo clientes que NO están ya en lista negra
+      setClientesAll(Array.isArray(data) ? data.filter(c => c.estatus !== 'Lista negra') : []);
+    } catch {}
+  }, []);
+
   useEffect(() => { cargar(); }, [cargar]);
+
+  const abrirModal = () => {
+    cargarClientes();
+    setBusModal(''); setClienteSel(null); setMotivo(''); setMontoAdeudado(''); setShowDrop(false);
+    setModal(true);
+  };
+
+  const clientesFiltrados = clientesAll.filter(c => {
+    const nombre = `${c.nombre} ${c.apellidoP} ${c.apellidoM}`.toLowerCase();
+    return nombre.includes(busModal.toLowerCase()) || (c.curp || '').toLowerCase().includes(busModal.toLowerCase());
+  }).slice(0, 6);
 
   const mostrarNotif = (tipo, msg) => {
     setNotif({ tipo, msg });
@@ -41,30 +68,28 @@ export default function ListaNegra() {
   };
 
   const agregar = async () => {
-    if (!form.nombre || !form.curp || !form.motivo) return;
+    if (!clienteSel || !motivo) {
+      mostrarNotif('error', 'Selecciona un cliente e ingresa el motivo.');
+      return;
+    }
     setGuardando(true);
     try {
-      const res = await fetch(`${API}/api/clientes`, {
-        method: 'POST',
+      // Cambiar estatus del cliente existente a "Lista negra"
+      const res = await fetch(`${API}/api/clientes/${clienteSel._id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nombre:    form.nombre.split(' ')[0] || form.nombre,
-          apellidoP: form.nombre.split(' ')[1] || '',
-          apellidoM: form.nombre.split(' ')[2] || '',
-          curp:      form.curp.toUpperCase(),
-          celular:   '',
-          estatus:   'Lista negra',
-          motivoListaNegra: form.motivo,
-          montoAdeudado:    Number(form.monto) || 0,
+          estatus: 'Lista negra',
+          motivoListaNegra: motivo,
+          montoAdeudado: Number(montoAdeudado) || 0,
         }),
       });
-      if (!res.ok) throw new Error('Error al guardar');
-      mostrarNotif('ok', `${form.nombre} agregado a lista negra.`);
-      setForm({ nombre: '', curp: '', motivo: '', monto: '' });
+      if (!res.ok) throw new Error('Error al actualizar');
+      mostrarNotif('ok', `${clienteSel.nombre} ${clienteSel.apellidoP} agregado a lista negra.`);
       setModal(false);
       cargar();
     } catch (e) {
-      mostrarNotif('error', e.message.includes('duplicate') ? 'Ya existe un registro con ese CURP.' : 'Error al agregar a lista negra.');
+      mostrarNotif('error', 'Error al agregar a lista negra.');
     } finally {
       setGuardando(false);
     }
@@ -74,9 +99,14 @@ export default function ListaNegra() {
     if (!confirmarElim) return;
     setEliminando(true);
     try {
-      const res = await fetch(`${API}/api/clientes/${confirmarElim._id}`, { method: 'DELETE' });
+      // Restaurar estatus a "Activo"
+      const res = await fetch(`${API}/api/clientes/${confirmarElim._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estatus: 'Activo', motivoListaNegra: '', montoAdeudado: 0 }),
+      });
       if (!res.ok) throw new Error();
-      mostrarNotif('ok', `${confirmarElim.nombre} ${confirmarElim.apellidoP} eliminado de lista negra.`);
+      mostrarNotif('ok', `${confirmarElim.nombre} ${confirmarElim.apellidoP} removido de lista negra.`);
       setConfirmarElim(null);
       cargar();
     } catch {
@@ -98,14 +128,12 @@ export default function ListaNegra() {
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
 
-      {/* Notificación */}
       {notif && (
         <div style={{ background: notif.tipo === 'ok' ? '#dcfce7' : '#fee2e2', border: `1px solid ${notif.tipo === 'ok' ? '#86efac' : '#fca5a5'}`, borderRadius: '12px', padding: '13px 18px', marginBottom: '18px', color: notif.tipo === 'ok' ? '#166534' : '#dc2626', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
           {notif.tipo === 'ok' ? <CheckCircle size={16} /> : <AlertCircle size={16} />} {notif.msg}
         </div>
       )}
 
-      {/* Error conexión */}
       {errorConn && (
         <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '12px', padding: '13px 18px', marginBottom: '18px', color: '#dc2626', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <AlertCircle size={16} /> {errorConn}
@@ -113,7 +141,6 @@ export default function ListaNegra() {
         </div>
       )}
 
-      {/* Buscador + botón */}
       <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #dceaf8', boxShadow: '0 2px 12px rgba(14,80,160,0.05)', padding: '20px 24px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
           <div style={{ flex: 1 }}>
@@ -126,13 +153,12 @@ export default function ListaNegra() {
           <button onClick={cargar} style={{ background: '#e8f2fc', border: '1px solid #dceaf8', borderRadius: '9px', padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '600', color: '#0e50a0', fontFamily: 'DM Sans, sans-serif' }}>
             <RefreshCw size={14} />
           </button>
-          <button onClick={() => setModal(true)} style={{ background: '#dc2626', border: 'none', borderRadius: '9px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(220,38,38,0.25)' }}>
+          <button onClick={abrirModal} style={{ background: '#dc2626', border: 'none', borderRadius: '9px', padding: '10px 18px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(220,38,38,0.25)' }}>
             <Plus size={14} /> Agregar
           </button>
         </div>
       </div>
 
-      {/* Alerta */}
       <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '12px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <AlertCircle size={16} color="#dc2626" />
         <span style={{ fontSize: '13px', color: '#dc2626', fontWeight: '500' }}>
@@ -140,7 +166,6 @@ export default function ListaNegra() {
         </span>
       </div>
 
-      {/* Tabla */}
       <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #dceaf8', boxShadow: '0 2px 12px rgba(14,80,160,0.05)', overflow: 'hidden' }}>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f6ff', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '32px', height: '32px', background: '#fee2e2', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -172,10 +197,10 @@ export default function ListaNegra() {
                     <td style={{ padding: '12px 16px', fontSize: '12px', color: '#4a6a94', fontFamily: 'monospace' }}>{c.curp}</td>
                     <td style={{ padding: '12px 16px', fontSize: '13px', color: '#4a6a94', maxWidth: '200px' }}>{c.motivoListaNegra || '—'}</td>
                     <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: '#dc2626' }}>{formatMoney(c.montoAdeudado)}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#4a6a94' }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('es-MX') : '—'}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#4a6a94' }}>{c.updatedAt ? new Date(c.updatedAt).toLocaleDateString('es-MX') : '—'}</td>
                     <td style={{ padding: '12px 16px' }}>
                       <button onClick={() => setConfirmarElim(c)} style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '7px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#dc2626', fontFamily: 'DM Sans, sans-serif' }}>
-                        Eliminar
+                        Remover
                       </button>
                     </td>
                   </tr>
@@ -186,40 +211,79 @@ export default function ListaNegra() {
         </div>
       </div>
 
-      {/* Modal agregar */}
+      {/* Modal agregar — busca cliente existente */}
       {modal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(10,45,94,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '460px', boxShadow: '0 24px 80px rgba(10,45,94,0.2)', overflow: 'hidden' }}>
+          <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '480px', boxShadow: '0 24px 80px rgba(10,45,94,0.2)', overflow: 'hidden' }}>
             <div style={{ background: '#fff', borderBottom: '1px solid #dceaf8', padding: '22px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', background: '#fee2e2', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <UserX size={20} color="#dc2626" />
-                </div>
+                <div style={{ width: '40px', height: '40px', background: '#fee2e2', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><UserX size={20} color="#dc2626" /></div>
                 <div>
                   <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>Agregar a lista negra</div>
-                  <div style={{ fontSize: '12px', color: '#90aac8', marginTop: '2px' }}>El cliente no podra recibir creditos</div>
+                  <div style={{ fontSize: '12px', color: '#90aac8', marginTop: '2px' }}>Selecciona un cliente existente</div>
                 </div>
               </div>
-              <button onClick={() => setModal(false)} style={{ background: '#f0f6ff', border: 'none', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#4a6a94' }}>
-                <X size={16} />
-              </button>
+              <button onClick={() => setModal(false)} style={{ background: '#f0f6ff', border: 'none', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#4a6a94' }}><X size={16} /></button>
             </div>
+
             <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {[
-                { label: 'Nombre completo',      key: 'nombre', type: 'text' },
-                { label: 'CURP',                 key: 'curp',   type: 'text' },
-                { label: 'Motivo',               key: 'motivo', type: 'text' },
-                { label: 'Monto adeudado (MXN)', key: 'monto',  type: 'number' },
-              ].map(({ label, key, type }) => (
-                <div key={key}>
-                  <label style={lbl}>{label}</label>
-                  <input type={type} value={form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} placeholder={label} style={inp} />
+
+              {/* Buscador de cliente */}
+              <div style={{ position: 'relative' }}>
+                <label style={lbl}>Buscar cliente *</label>
+                <div style={{ position: 'relative' }}>
+                  <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#90aac8', pointerEvents: 'none' }} />
+                  <input
+                    value={busModal}
+                    onChange={e => { setBusModal(e.target.value); setClienteSel(null); setShowDrop(true); }}
+                    onFocus={() => setShowDrop(true)}
+                    placeholder="Nombre o CURP del cliente..."
+                    style={{ ...inp, paddingLeft: '36px' }}
+                  />
                 </div>
-              ))}
+                {showDrop && busModal && clientesFiltrados.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #dceaf8', borderRadius: '10px', boxShadow: '0 8px 24px rgba(14,80,160,0.12)', zIndex: 200, marginTop: '4px' }}>
+                    {clientesFiltrados.map(c => (
+                      <div key={c._id} onClick={() => { setClienteSel(c); setBusModal(`${c.nombre} ${c.apellidoP} ${c.apellidoM}`); setShowDrop(false); }}
+                        style={{ padding: '10px 14px', cursor: 'pointer', fontSize: '13px', color: '#0a2d5e', borderBottom: '1px solid #f0f6ff' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#f4f8fd'} onMouseLeave={e => e.currentTarget.style.background='#fff'}>
+                        <strong>{c.nombre} {c.apellidoP}</strong> <span style={{ color: '#90aac8', fontSize: '11px' }}>{c.curp}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {showDrop && busModal && clientesFiltrados.length === 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #dceaf8', borderRadius: '10px', padding: '12px 14px', zIndex: 200, marginTop: '4px', fontSize: '13px', color: '#90aac8' }}>
+                    No se encontraron clientes
+                  </div>
+                )}
+              </div>
+
+              {/* Cliente seleccionado */}
+              {clienteSel && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#0a2d5e' }}>{clienteSel.nombre} {clienteSel.apellidoP} {clienteSel.apellidoM}</div>
+                    <div style={{ fontSize: '11px', color: '#90aac8', marginTop: '2px' }}>CURP: {clienteSel.curp}</div>
+                  </div>
+                  <CheckCircle size={18} color="#dc2626" />
+                </div>
+              )}
+
+              <div>
+                <label style={lbl}>Motivo *</label>
+                <input value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Motivo de la inclusion en lista negra" style={inp} />
+              </div>
+
+              <div>
+                <label style={lbl}>Monto adeudado (MXN)</label>
+                <input type="number" value={montoAdeudado} onChange={e => setMontoAdeudado(e.target.value)} placeholder="0.00" style={inp} />
+              </div>
             </div>
+
             <div style={{ padding: '0 28px 24px', display: 'flex', gap: '10px' }}>
               <button onClick={() => setModal(false)} style={{ flex: 1, padding: '11px', border: '1.5px solid #dceaf8', background: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#4a6a94', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Cancelar</button>
-              <button onClick={agregar} disabled={guardando} style={{ flex: 2, padding: '11px', border: 'none', background: guardando ? '#fca5a5' : '#dc2626', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: guardando ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}>
+              <button onClick={agregar} disabled={guardando} style={{ flex: 2, padding: '11px', border: 'none', background: guardando ? '#fca5a5' : '#dc2626', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: guardando ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', boxShadow: '0 4px 12px rgba(220,38,38,0.25)' }}>
                 {guardando ? <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Guardando...</> : 'Agregar a lista negra'}
               </button>
             </div>
@@ -227,21 +291,21 @@ export default function ListaNegra() {
         </div>
       )}
 
-      {/* Modal confirmar eliminar */}
+      {/* Modal confirmar remover */}
       {confirmarElim && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,45,94,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '380px', padding: '32px', boxShadow: '0 24px 80px rgba(10,45,94,0.2)' }}>
             <div style={{ width: '52px', height: '52px', background: '#fee2e2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px' }}>
               <AlertCircle size={24} color="#dc2626" />
             </div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '18px', fontWeight: '700', color: '#0a2d5e', marginBottom: '10px' }}>Confirmar eliminacion</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '18px', fontWeight: '700', color: '#0a2d5e', marginBottom: '10px' }}>Confirmar accion</div>
             <p style={{ fontSize: '13px', color: '#4a6a94', marginBottom: '24px', lineHeight: '1.7' }}>
-              Estas por eliminar a <strong>{confirmarElim.nombre} {confirmarElim.apellidoP}</strong> de la lista negra. Esta accion no se puede deshacer.
+              Vas a remover a <strong>{confirmarElim.nombre} {confirmarElim.apellidoP}</strong> de la lista negra. Su estatus volvera a <strong>Activo</strong>.
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setConfirmarElim(null)} style={{ flex: 1, padding: '11px', border: '1.5px solid #dceaf8', background: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#4a6a94', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Cancelar</button>
               <button onClick={eliminar} disabled={eliminando} style={{ flex: 1, padding: '11px', border: 'none', background: '#dc2626', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: eliminando ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}>
-                {eliminando ? <><Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> Eliminando...</> : 'Eliminar'}
+                {eliminando ? <><Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> Procesando...</> : 'Remover'}
               </button>
             </div>
           </div>

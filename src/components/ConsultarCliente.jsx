@@ -54,6 +54,7 @@ export default function ConsultarCliente() {
   };
 
   const filtrados = clientes.filter(c => {
+    if (c.estatus === 'Lista negra') return false; // excluir lista negra
     const q = busqueda.toLowerCase();
     const nombre = `${c.nombre} ${c.apellidoP} ${c.apellidoM}`.toLowerCase();
     return nombre.includes(q) || (c.curp || '').toLowerCase().includes(q) || (c.celular || '').includes(q);
@@ -245,6 +246,7 @@ export default function ConsultarCliente() {
                 <select value={formEdit.estatus || 'Activo'} onChange={e => setFormEdit(p => ({ ...p, estatus: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
                   <option value="Activo">Activo</option>
                   <option value="Inactivo">Inactivo</option>
+                  {/* Lista negra se gestiona desde el modulo Lista Negra */}
                 </select>
               </div>
             </div>
