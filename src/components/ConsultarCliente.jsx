@@ -249,7 +249,7 @@ export default function ConsultarCliente() {
       {!selected && (
         <div style={S.card}>
           {/* Encabezado */}
-          <div style={{ background:'linear-gradient(135deg, #0d1f5c 0%, #1565c0 100%)', padding:'26px 28px', textAlign:'center' }}>
+          <div style={{ background:'#0d1f5c', padding:'26px 28px', textAlign:'center' }}>
             <h2 style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'28px', fontWeight:'700', color:'#fff', margin:'0 0 4px' }}>Clientes activos</h2>
             <p style={{ fontSize:'13px', color:'rgba(255,255,255,0.75)', margin:0 }}>Al tener puesto de Dirección General tienes acceso a toda la información</p>
           </div>
@@ -331,7 +331,7 @@ export default function ConsultarCliente() {
               <div style={{ width:'100px', height:'100px', borderRadius:'50%', overflow:'hidden', borderWidth:'3px', borderStyle:'solid', borderColor:'#dceaf8', boxShadow:'0 4px 18px rgba(14,80,160,0.15)' }}>
                 {(selected.documentos?.fotoPerfil||selected.fotos?.cliente)
                   ? <img src={selected.documentos?.fotoPerfil||selected.fotos?.cliente} alt="Foto" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                  : <div style={{ width:'100%', height:'100%', background:'linear-gradient(135deg,#e8f2fc,#dceaf8)', display:'flex', alignItems:'center', justifyContent:'center' }}><User size={42} color="#90aac8"/></div>
+                  : <div style={{ width:'100%', height:'100%', background:'#e8f2fc', display:'flex', alignItems:'center', justifyContent:'center' }}><User size={42} color="#90aac8"/></div>
                 }
               </div>
             </div>

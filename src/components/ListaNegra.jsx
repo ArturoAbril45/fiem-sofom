@@ -222,7 +222,7 @@ export default function ListaNegra() {
       {!selected && (
         <div style={S.card}>
           {/* Encabezado rojo oscuro */}
-          <div style={{ background:'linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%)', padding:'26px 28px', textAlign:'center' }}>
+          <div style={{ background:'#991b1b', padding:'26px 28px', textAlign:'center' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', marginBottom:'4px' }}>
               <Slash size={28} color="#fff"/>
               <h2 style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'28px', fontWeight:'700', color:'#fff', margin:0 }}>Lista negra</h2>
@@ -309,7 +309,7 @@ export default function ListaNegra() {
               onClick={()=>{ const s=selected.documentos?.fotoPerfil||selected.fotos?.cliente; if(s) setZoom({src:s,label:'Foto perfil'}); }}>
               {(selected.documentos?.fotoPerfil||selected.fotos?.cliente)
                 ? <img src={selected.documentos?.fotoPerfil||selected.fotos?.cliente} alt="Foto" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                : <div style={{ width:'100%', height:'100%', background:'linear-gradient(135deg,#fee2e2,#fca5a5)', display:'flex', alignItems:'center', justifyContent:'center' }}><User size={42} color="#dc2626"/></div>
+                : <div style={{ width:'100%', height:'100%', background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center' }}><User size={42} color="#dc2626"/></div>
               }
             </div>
             <h2 style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'24px', fontWeight:'700', color:'#0a2d5e', margin:'0 0 4px', textTransform:'uppercase' }}>{nombreCompleto}</h2>
