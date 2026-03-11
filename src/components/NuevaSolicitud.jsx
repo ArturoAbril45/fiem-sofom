@@ -75,14 +75,21 @@ export default function NuevaSolicitud() {
 
   useEffect(() => { fetchProductos(); }, []);
 
+  const PRODUCTOS_DEFAULT = [
+    { _id: 'default-personal', clave: 'PERSONAL', nombre: 'PRESTAMO PERSONAL', frecuencia: 'SEMANAL', activo: true },
+    { _id: 'default-grupal',   clave: 'GRUPAL',   nombre: 'PRESTAMO GRUPAL',   frecuencia: 'SEMANAL', activo: true },
+  ];
+
   const fetchProductos = async () => {
     setCargando(true);
     try {
       const res  = await fetch(`${API}/api/productos-credito`);
       const data = await res.json();
-      setProductos(Array.isArray(data) ? data.filter(p=>p.activo!==false) : []);
-    } catch { setMsgErr('Error al cargar productos'); }
-    finally { setCargando(false); }
+      const arr  = Array.isArray(data) ? data.filter(p=>p.activo!==false) : [];
+      setProductos(arr.length > 0 ? arr : PRODUCTOS_DEFAULT);
+    } catch {
+      setProductos(PRODUCTOS_DEFAULT);
+    } finally { setCargando(false); }
   };
 
   const buscarCliente = async () => {
