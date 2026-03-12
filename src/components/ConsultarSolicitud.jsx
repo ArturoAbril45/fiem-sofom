@@ -19,6 +19,16 @@ function Sec({titulo,icono,children}) {
 }
 
 function Campo({label,val,w='auto'}) {
+
+function FieldRO({label,val}) {
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:"5px",flexWrap:"wrap"}}>
+      <span style={{fontSize:"11px",fontWeight:"700",color:"#90aac8",textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{label}:</span>
+      <span style={{border:"1.5px solid #dceaf8",borderRadius:"6px",padding:"4px 10px",fontSize:"13px",fontFamily:"DM Sans,sans-serif",color:"#1a3d6e",background:"#f8fbff",fontWeight:"600"}}>{val||"—"}</span>
+    </div>
+  );
+}
+
   return (
     <div style={{minWidth:'120px',width:w,marginBottom:'4px'}}>
       <div style={{fontSize:'10px',fontWeight:'700',color:'#90aac8',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'2px'}}>{label}</div>
@@ -165,31 +175,43 @@ export default function ConsultarSolicitud() {
           </div>
         )}
 
+        {/* ── Info solicitud ── */}
         <Sec titulo="Información de la solicitud" icono={<FileText size={15}/>}>
           <div style={{display:'flex',gap:'16px',flexWrap:'wrap'}}>
-            <Campo label="ID solicitud"   val={detalle._id?.slice(-8).toUpperCase()}/>
-            <Campo label="Fecha creada"   val={fmtF(detalle.fecha||detalle.createdAt)}/>
-            <Campo label="Producto"       val={detalle.producto}/>
-            <Campo label="Tipo CNBV"      val={detalle.tipoCNBV}/>
-            <Campo label="Monto"          val={fmt(detalle.monto)}/>
-            <Campo label="Plazo"          val={`${detalle.plazo} periodos`}/>
-            <Campo label="Frecuencia"     val={detalle.frecuencia}/>
-            <Campo label="Tasa interés"   val={`${detalle.tasaInteres||0}%`}/>
-            <Campo label="Tasa moratoria" val={`${detalle.tasaMoratoria||0}%`}/>
-            <Campo label="Destino"        val={detalle.destino||'—'}/>
+            <FieldRO label="Identificador único de solicitud" val={detalle._id?.slice(-8).toUpperCase()}/>
+            <FieldRO label="Fecha creada" val={fmtF(detalle.fecha||detalle.createdAt)}/>
           </div>
         </Sec>
 
+        {/* ── Cliente ── */}
         {detalle.tipo!=='GRUPAL' && (
           <Sec titulo="Cliente" icono={<User size={15}/>}>
-            <div style={{display:'flex',gap:'16px',flexWrap:'wrap',marginBottom:'10px'}}>
-              <Campo label="Nombre" val={detalle.clienteNombre} w="100%"/>
-              <Campo label="CURP"   val={detalle.clienteCurp}/>
-              <Campo label="Ruta"   val={detalle.rutaVinculacion||'—'}/>
+            <div style={{marginBottom:'12px'}}>
+              <div style={{fontSize:'14px',fontWeight:'700',color:'#0a2d5e',marginBottom:'4px'}}>NOMBRE: {detalle.clienteNombre||'—'}</div>
+              <div style={{fontSize:'13px',color:'#555'}}>CURP: {detalle.clienteCurp||'—'}</div>
             </div>
+            <div style={{fontSize:'12px',fontWeight:'700',color:'#0a2d5e',marginBottom:'8px',textTransform:'uppercase'}}>Domicilio que aparecerá en la solicitud</div>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
+              <thead><tr style={{background:'#e8f2fc'}}>
+                {['Selección','Fecha Agregada','CP','Estado','Municipio','Colonia','Calle','Numero exterior'].map(h=>(
+                  <th key={h} style={{padding:'7px 10px',textAlign:'left',fontWeight:'700',color:'#0a2d5e',fontSize:'11px',borderBottom:'2px solid #dceaf8'}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody><tr style={{background:'#fff'}}>
+                <td style={{padding:'7px 10px'}}><span style={{background:'#0e50a0',color:'#fff',borderRadius:'4px',padding:'2px 8px',fontSize:'11px',fontWeight:'600'}}>Seleccionar</span></td>
+                <td style={{padding:'7px 10px',fontSize:'11px',color:'#555'}}>{fmtF(detalle.createdAt)}</td>
+                <td style={{padding:'7px 10px'}}>{detalle.domicilio?.cp||'—'}</td>
+                <td style={{padding:'7px 10px'}}>{detalle.domicilio?.estado||'—'}</td>
+                <td style={{padding:'7px 10px'}}>{detalle.domicilio?.municipio||'—'}</td>
+                <td style={{padding:'7px 10px'}}>{detalle.domicilio?.colonia||'—'}</td>
+                <td style={{padding:'7px 10px'}}>{detalle.domicilio?.calle||'—'}</td>
+                <td style={{padding:'7px 10px'}}>{detalle.domicilio?.numExt||'—'}</td>
+              </tr></tbody>
+            </table>
           </Sec>
         )}
 
+        {/* ── Grupo ── */}
         {detalle.tipo==='GRUPAL' && (detalle.miembros||[]).length>0 && (
           <Sec titulo="Miembros del grupo" icono={<User size={15}/>}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
@@ -210,24 +232,70 @@ export default function ConsultarSolicitud() {
           </Sec>
         )}
 
-        {(detalle.avales||[]).length>0 && (
-          <Sec titulo="Avales" icono={<User size={15}/>}>
-            {detalle.avales.map((av,i)=>(
-              <div key={i} style={{display:'flex',gap:'16px',flexWrap:'wrap',padding:'8px 0',borderBottom:'1px solid #f0f4f8',fontSize:'12px'}}>
+        {/* ── Avales ── */}
+        <Sec titulo="Avales" icono={<User size={15}/>}>
+          {(detalle.avales||[]).length===0
+            ? <div style={{color:'#90aac8',fontSize:'13px'}}>Sin avales registrados</div>
+            : detalle.avales.map((av,i)=>(
+              <div key={i} style={{display:'flex',gap:'16px',flexWrap:'wrap',padding:'8px 0',borderBottom:'1px solid #f0f4f8',fontSize:'13px'}}>
                 <span><b>Nombre:</b> {av.nombre||'—'}</span>
                 <span><b>CURP:</b> {av.curp||'—'}</span>
                 <span><b>Tel:</b> {av.telefono||'—'}</span>
               </div>
-            ))}
-          </Sec>
-        )}
+            ))
+          }
+        </Sec>
 
-        <Sec titulo="Información financiera" icono={<DollarSign size={15}/>}>
-          <div style={{display:'flex',gap:'16px',flexWrap:'wrap',marginBottom:'10px'}}>
-            <Campo label="Ingreso mensual"   val={fmt(detalle.ingresoMensual)}/>
-            <Campo label="Otros ingresos"    val={fmt(detalle.otrosIngresos)}/>
-            <Campo label="Total gastos"      val={fmt(totalGastos)}/>
-            <Campo label="Disponible mensual" val={fmt((parseFloat(detalle.ingresoMensual)||0)+(parseFloat(detalle.otrosIngresos)||0)-totalGastos)}/>
+        {/* ── Características principales ── */}
+        <Sec titulo="Características principales" icono={<FileText size={15}/>}>
+          <div style={{display:'flex',gap:'10px',flexWrap:'wrap',alignItems:'center',marginBottom:'10px'}}>
+            <FieldRO label="Tipo de crédito"    val={detalle.producto||'—'}/>
+            <FieldRO label="Tipo de producto"   val={detalle.tipoCNBV||'—'}/>
+          </div>
+          <div style={{display:'flex',gap:'10px',flexWrap:'wrap',alignItems:'center',marginBottom:'10px'}}>
+            <FieldRO label="Tipo (CNBV)"        val={detalle.tipoCNBV||'—'}/>
+            <FieldRO label="Monto total"        val={fmt(detalle.monto)}/>
+            <FieldRO label="IVA"               val={`${detalle.iva||0}`}/>
+          </div>
+          <div style={{display:'flex',gap:'10px',flexWrap:'wrap',alignItems:'center',marginBottom:'10px'}}>
+            <FieldRO label="Forma de pago"      val={detalle.frecuencia||'—'}/>
+            <FieldRO label="Plazo"             val={String(detalle.plazo||'—')}/>
+            <FieldRO label="T.B. Interés normal" val={detalle.tbN||'FIJA'}/>
+            <FieldRO label="Tipo tasa"         val={detalle.tipoTasa||'MENSUAL'}/>
+            <FieldRO label="Tasa de interés"   val={`${detalle.tasaInteres||0}`}/>
+          </div>
+          <div style={{display:'flex',gap:'10px',flexWrap:'wrap',alignItems:'center'}}>
+            <FieldRO label="T.B. Interés Moratorio" val={detalle.tbM||'FIJA'}/>
+            <FieldRO label="Tipo tasa Moratorio"    val={detalle.tipoTasaM||'MENSUAL'}/>
+            <FieldRO label="% tasa moratorio"       val={`${detalle.tasaMoratoria||0}`}/>
+            <FieldRO label="Destino"               val={detalle.destino||'—'}/>
+          </div>
+        </Sec>
+
+        {/* ── Información financiera ── */}
+        <Sec titulo="Características principales" icono={<DollarSign size={15}/>}>
+          <div style={{background:'#f0f4f8',borderRadius:'6px',padding:'5px 12px',marginBottom:'10px',fontSize:'11px',fontWeight:'700',color:'#0a2d5e',textTransform:'uppercase'}}>Ingresos</div>
+          <div style={{display:'flex',gap:'12px',flexWrap:'wrap',marginBottom:'14px'}}>
+            <FieldRO label="Ingreso mensual promedio"  val={fmt(detalle.ingresoMensual)}/>
+            <FieldRO label="Otros Ingresos"            val={fmt(detalle.otrosIngresos)}/>
+            <FieldRO label="Ingreso promedio total"    val={fmt((parseFloat(detalle.ingresoMensual)||0)+(parseFloat(detalle.otrosIngresos)||0))}/>
+          </div>
+          <div style={{background:'#f0f4f8',borderRadius:'6px',padding:'5px 12px',marginBottom:'10px',fontSize:'11px',fontWeight:'700',color:'#0a2d5e',textTransform:'uppercase'}}>Gasto promedio mensual</div>
+          <div style={{display:'flex',gap:'10px',flexWrap:'wrap',marginBottom:'8px'}}>
+            <FieldRO label="Alimento"   val={fmt(detalle.gastos?.alimento)}/>
+            <FieldRO label="Luz"        val={fmt(detalle.gastos?.luz)}/>
+            <FieldRO label="Telefono"   val={fmt(detalle.gastos?.telefono)}/>
+            <FieldRO label="Transporte" val={fmt(detalle.gastos?.transporte)}/>
+          </div>
+          <div style={{display:'flex',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+            <FieldRO label="Renta"             val={fmt(detalle.gastos?.renta)}/>
+            <FieldRO label="Inversión negocio" val={fmt(detalle.gastos?.inversion)}/>
+            <FieldRO label="Créditos"          val={fmt(detalle.gastos?.creditos)}/>
+            <FieldRO label="Otros"             val={fmt(detalle.gastos?.otros)}/>
+          </div>
+          <div style={{display:'flex',gap:'12px',flexWrap:'wrap'}}>
+            <FieldRO label="Total gasto"           val={fmt(totalGastos)}/>
+            <FieldRO label="Total Disponible mensual" val={fmt((parseFloat(detalle.ingresoMensual)||0)+(parseFloat(detalle.otrosIngresos)||0)-totalGastos)}/>
           </div>
         </Sec>
 
