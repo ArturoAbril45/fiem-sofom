@@ -356,7 +356,6 @@ export default function NuevaSolicitud() {
     setIngresoM('0'); setOtrosIng('0'); setGastos({alimento:'',luz:'',telefono:'',transporte:'',renta:'',inversion:'',creditos:'',otros:''});
   };
 
-  const cancelar = () => { resetForm();  };
 
 
   const cancelar = () => { resetForm(); };
