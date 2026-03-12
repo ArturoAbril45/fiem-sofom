@@ -389,7 +389,7 @@ export default function NuevaSolicitud() {
           }
         </div>
         <div style={{padding:'14px 20px'}}>
-          <button onClick={cancelar} style={{...S.btnGris,width:'auto',padding:'9px 24px',fontSize:'13px'}}>← Cancelar</button>
+  
         </div>
       </div>
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
