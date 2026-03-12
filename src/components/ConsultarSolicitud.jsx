@@ -1,23 +1,48 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { Search, FileText, Eye, X, Check, XCircle, RefreshCw, AlertCircle, CheckCircle, Loader, ChevronDown } from 'lucide-react';
+import { Search, FileText, Eye, X, Check, XCircle, RefreshCw, AlertCircle, CheckCircle, Loader, ArrowLeft, User, DollarSign } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://fiem-backend-production.up.railway.app';
 const fmt  = v => `$${(parseFloat(v)||0).toLocaleString('es-MX',{minimumFractionDigits:2})}`;
-const fmtF = d => d ? new Date(d).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+const fmtF = d => d ? new Date(d).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+const inp  = { border:'1.5px solid #dceaf8', borderRadius:'9px', padding:'9px 13px', fontSize:'13px', fontFamily:'DM Sans,sans-serif', color:'#1a3d6e', outline:'none', background:'#fafcff', boxSizing:'border-box' };
+
+function Sec({titulo,icono,children}) {
+  return (
+    <div style={{background:'#fff',borderRadius:'14px',border:'1px solid #dceaf8',boxShadow:'0 2px 10px rgba(14,80,160,0.05)',marginBottom:'14px',overflow:'hidden'}}>
+      <div style={{padding:'11px 18px',background:'#f4f8fd',borderBottom:'1px solid #dceaf8',display:'flex',alignItems:'center',gap:'8px',fontFamily:"'Cormorant Garamond',serif",fontSize:'16px',fontWeight:'700',color:'#0a2d5e'}}>
+        {icono}{titulo}
+      </div>
+      <div style={{padding:'14px 18px'}}>{children}</div>
+    </div>
+  );
+}
+
+function Campo({label,val,w='auto'}) {
+  return (
+    <div style={{minWidth:'120px',width:w,marginBottom:'4px'}}>
+      <div style={{fontSize:'10px',fontWeight:'700',color:'#90aac8',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'2px'}}>{label}</div>
+      <div style={{fontSize:'13px',fontWeight:'600',color:'#0a2d5e'}}>{val||'—'}</div>
+    </div>
+  );
+}
 
 export default function ConsultarSolicitud() {
-  const [busqueda,      setBusqueda]      = useState('');
-  const [filtroEstatus, setFiltroEstatus] = useState('');
-  const [seleccionado,  setSeleccionado]  = useState(null);
-  const [solicitudes,   setSolicitudes]   = useState([]);
-  const [cargando,      setCargando]      = useState(true);
-  const [notif,         setNotif]         = useState(null);
-  const [accionando,    setAccionando]    = useState(false);
-  const [modalAprob,    setModalAprob]    = useState(false);
-  const [modalRechaz,   setModalRechaz]   = useState(false);
-  const [fechaInicio,   setFechaInicio]   = useState('');
-  const [motivoRech,    setMotivoRech]    = useState('');
+  const [vista,       setVista]       = useState('lista');
+  const [filtroBtn,   setFiltroBtn]   = useState('pendientes');
+  const [busqueda,    setBusqueda]    = useState('');
+  const [solicitudes, setSolicitudes] = useState([]);
+  const [cargando,    setCargando]    = useState(true);
+  const [detalle,     setDetalle]     = useState(null);
+  const [notif,       setNotif]       = useState(null);
+  const [accionando,  setAccionando]  = useState(false);
+  const [modalAprob,  setModalAprob]  = useState(false);
+  const [modalRechaz, setModalRechaz] = useState(false);
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [motivoRech,  setMotivoRech]  = useState('');
+
+  const estatusMap   = { pendientes:'Pendiente', aprobadas:'Aprobada', rechazadas:'Rechazada' };
+  const subtituloMap = { pendientes:'Solicitudes pendientes', aprobadas:'Solicitudes aprobadas', rechazadas:'Solicitudes rechazadas' };
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -31,196 +56,364 @@ export default function ConsultarSolicitud() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const mostrarNotif = (tipo, msg) => {
-    setNotif({ tipo, msg });
-    setTimeout(() => setNotif(null), 4000);
-  };
+  const mostrarNotif = (tipo, msg) => { setNotif({tipo,msg}); setTimeout(()=>setNotif(null),4000); };
 
-  // ── Aprobar solicitud → crear crédito ──
   const aprobarSolicitud = async () => {
-    if (!fechaInicio) { mostrarNotif('error', 'Selecciona la fecha de inicio del crédito.'); return; }
+    if (!fechaInicio) { mostrarNotif('error','Selecciona la fecha de inicio.'); return; }
     setAccionando(true);
     try {
-      // 1. Actualizar estatus solicitud
-      await fetch(`${API}/api/solicitudes/${seleccionado._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estatus: 'Aprobada', fechaAprobacion: new Date().toISOString() }),
+      await fetch(`${API}/api/solicitudes/${detalle._id}`,{
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({estatus:'Aprobada',fechaAprobacion:new Date().toISOString()}),
       });
-      // 2. Crear crédito automáticamente
-      const creditoPayload = {
-        clienteId:      seleccionado.clienteId,
-        clienteNombre:  seleccionado.clienteNombre,
-        clienteCurp:    seleccionado.clienteCurp,
-        solicitudId:    seleccionado._id,
-        producto:       seleccionado.producto,
-        tipo:           seleccionado.tipo || 'PERSONAL',
-        monto:          seleccionado.monto,
-        saldo:          seleccionado.monto,
-        plazo:          seleccionado.plazo,
-        frecuencia:     seleccionado.frecuencia,
-        tasaInteres:    seleccionado.tasaInteres,
-        tasaMoratoria:  seleccionado.tasaMoratoria,
-        destino:        seleccionado.destino,
-        fechaInicio,
-        estatus:        'Vigente',
-        miembros:       seleccionado.miembros,
-        nombreGrupo:    seleccionado.nombreGrupo,
-        avales:         seleccionado.avales,
-        tablaPagos:     seleccionado.tablaPagos,
-        pagosRealizados: 0,
-      };
-      const resC   = await fetch(`${API}/api/creditos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(creditoPayload),
+      await fetch(`${API}/api/creditos`,{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          clienteId:detalle.clienteId, clienteNombre:detalle.clienteNombre,
+          clienteCurp:detalle.clienteCurp, solicitudId:detalle._id,
+          producto:detalle.producto, tipo:detalle.tipo||'PERSONAL',
+          monto:detalle.monto, saldo:detalle.monto, plazo:detalle.plazo,
+          frecuencia:detalle.frecuencia, tasaInteres:detalle.tasaInteres,
+          tasaMoratoria:detalle.tasaMoratoria, destino:detalle.destino,
+          fechaInicio, estatus:'Vigente', miembros:detalle.miembros,
+          nombreGrupo:detalle.nombreGrupo, avales:detalle.avales,
+          tablaPagos:detalle.tablaPagos, pagosRealizados:0,
+        }),
       });
-      const credito = await resC.json();
-      mostrarNotif('ok', `✅ Solicitud aprobada — Crédito ${credito.folio || ''} creado correctamente`);
-      setModalAprob(false);
-      setFechaInicio('');
-      setSeleccionado(null);
+      mostrarNotif('ok','✅ Solicitud aprobada — crédito creado correctamente');
+      setModalAprob(false); setFechaInicio('');
+      setDetalle(d=>({...d,estatus:'Aprobada'}));
       cargar();
-    } catch (e) {
-      mostrarNotif('error', 'Error al aprobar: ' + e.message);
-    } finally { setAccionando(false); }
-  };
-
-  // ── Rechazar solicitud ──
-  const rechazarSolicitud = async () => {
-    setAccionando(true);
-    try {
-      await fetch(`${API}/api/solicitudes/${seleccionado._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estatus: 'Rechazada', motivoRechazo: motivoRech, fechaRechazo: new Date().toISOString() }),
-      });
-      mostrarNotif('ok', 'Solicitud rechazada correctamente.');
-      setModalRechaz(false);
-      setMotivoRech('');
-      setSeleccionado(null);
-      cargar();
-    } catch { mostrarNotif('error', 'Error al rechazar la solicitud.'); }
+    } catch(e) { mostrarNotif('error','Error: '+e.message); }
     finally { setAccionando(false); }
   };
 
+  const rechazarSolicitud = async () => {
+    setAccionando(true);
+    try {
+      await fetch(`${API}/api/solicitudes/${detalle._id}`,{
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({estatus:'Rechazada',motivoRechazo:motivoRech,fechaRechazo:new Date().toISOString()}),
+      });
+      mostrarNotif('ok','Solicitud rechazada correctamente.');
+      setModalRechaz(false); setMotivoRech('');
+      setDetalle(d=>({...d,estatus:'Rechazada',motivoRechazo:motivoRech}));
+      cargar();
+    } catch { mostrarNotif('error','Error al rechazar.'); }
+    finally { setAccionando(false); }
+  };
+
+  const estatusActivo = estatusMap[filtroBtn];
   const filtradas = solicitudes.filter(s =>
-    ((s.clienteNombre || '').toLowerCase().includes(busqueda.toLowerCase()) ||
-     (s.clienteCurp   || '').includes(busqueda) ||
-     (s.nombreGrupo   || '').toLowerCase().includes(busqueda.toLowerCase())) &&
-    (!filtroEstatus || s.estatus === filtroEstatus)
+    s.estatus === estatusActivo &&
+    ((s.clienteNombre||'').toLowerCase().includes(busqueda.toLowerCase()) ||
+     (s.clienteCurp||'').includes(busqueda) ||
+     (s.nombreGrupo||'').toLowerCase().includes(busqueda.toLowerCase()) ||
+     (s._id||'').toLowerCase().includes(busqueda.toLowerCase()) ||
+     String(s.monto||'').includes(busqueda))
   );
 
-  const pillCfg = {
-    Pendiente:   { bg: '#fef9c3', c: '#854d0e' },
-    Aprobada:    { bg: '#dcfce7', c: '#166534' },
-    Rechazada:   { bg: '#fee2e2', c: '#991b1b' },
-    'En revisión':{ bg: '#e0f2fe', c: '#0c4a6e' },
-    Cancelada:   { bg: '#f1f5f9', c: '#475569' },
-  };
-  const Pill = ({ v }) => {
-    const s = pillCfg[v] || { bg: '#f1f5f9', c: '#475569' };
-    return <span style={{ background: s.bg, color: s.c, borderRadius: '20px', padding: '3px 11px', fontSize: '11px', fontWeight: '700', display: 'inline-block' }}>{v || '—'}</span>;
+  const bannerCfg = {
+    Pendiente:    { bg:'#fef3c7', c:'#92400e', txt:'Esta solicitud se encuentra pendiente de revisión' },
+    Aprobada:     { bg:'#22c55e', c:'#fff',    txt:'Esta solicitud ya esta aprobada' },
+    Rechazada:    { bg:'#ef4444', c:'#fff',    txt:'Esta solicitud se encuentra cancelada' },
+    'En revisión':{ bg:'#3b82f6', c:'#fff',    txt:'Esta solicitud está en revisión' },
   };
 
-  const inp = { border: '1.5px solid #dceaf8', borderRadius: '9px', padding: '10px 13px', fontSize: '13px', fontFamily: 'DM Sans, sans-serif', color: '#1a3d6e', outline: 'none', background: '#fafcff', boxSizing: 'border-box' };
+  // ════════ VISTA DETALLE ════════
+  if (vista==='detalle' && detalle) {
+    const banner      = bannerCfg[detalle.estatus] || bannerCfg['Pendiente'];
+    const totalGastos = Object.values(detalle.gastos||{}).reduce((a,v)=>a+(parseFloat(v)||0),0);
+    return (
+      <div style={{maxWidth:'860px',margin:'0 auto',fontFamily:'DM Sans,sans-serif'}}>
+        {notif && (
+          <div style={{background:notif.tipo==='ok'?'#dcfce7':'#fee2e2',border:`1px solid ${notif.tipo==='ok'?'#86efac':'#fca5a5'}`,borderRadius:'12px',padding:'12px 18px',marginBottom:'16px',color:notif.tipo==='ok'?'#166534':'#dc2626',fontSize:'13px',fontWeight:'600',display:'flex',alignItems:'center',gap:'8px'}}>
+            {notif.tipo==='ok'?<CheckCircle size={15}/>:<AlertCircle size={15}/>}{notif.msg}
+          </div>
+        )}
 
+        <button onClick={()=>setVista('lista')} style={{display:'flex',alignItems:'center',gap:'6px',background:'none',border:'none',color:'#0e50a0',fontWeight:'700',fontSize:'13px',cursor:'pointer',marginBottom:'14px',padding:0}}>
+          <ArrowLeft size={15}/> Regresar a solicitudes
+        </button>
+
+        <div style={{textAlign:'center',marginBottom:'14px'}}>
+          <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'22px',fontWeight:'700',color:'#0a2d5e',margin:'0 0 4px'}}>
+            Consultar solicitud {detalle.tipo==='GRUPAL'?'grupal':'personal'}
+          </h2>
+          <div style={{fontSize:'14px',fontWeight:'700',color:'#0a2d5e',textTransform:'uppercase'}}>
+            {detalle.tipo==='GRUPAL' ? detalle.nombreGrupo : detalle.clienteNombre}
+          </div>
+          <div style={{fontSize:'13px',color:'#90aac8'}}>SOLICITUD: {detalle._id?.slice(-8).toUpperCase()}</div>
+        </div>
+
+        {/* Banner */}
+        <div style={{background:banner.bg,borderRadius:'10px',padding:'13px',textAlign:'center',marginBottom:'16px'}}>
+          <span style={{color:banner.c,fontWeight:'700',fontSize:'14px'}}>{banner.txt}</span>
+        </div>
+
+        {/* Botones acción — solo pendiente */}
+        {detalle.estatus==='Pendiente' && (
+          <div style={{display:'flex',gap:'10px',marginBottom:'16px'}}>
+            <button onClick={()=>setModalRechaz(true)}
+              style={{flex:1,padding:'11px',border:'1.5px solid #fca5a5',background:'#fff',borderRadius:'10px',fontSize:'13px',fontWeight:'600',color:'#dc2626',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
+              <XCircle size={14}/> Rechazar solicitud
+            </button>
+            <button onClick={()=>setModalAprob(true)}
+              style={{flex:2,padding:'11px',border:'none',background:'#166534',borderRadius:'10px',fontSize:'13px',fontWeight:'700',color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',boxShadow:'0 4px 12px rgba(22,101,52,0.25)'}}>
+              <Check size={14}/> Aprobar solicitud
+            </button>
+          </div>
+        )}
+
+        <Sec titulo="Información de la solicitud" icono={<FileText size={15}/>}>
+          <div style={{display:'flex',gap:'16px',flexWrap:'wrap'}}>
+            <Campo label="ID solicitud"   val={detalle._id?.slice(-8).toUpperCase()}/>
+            <Campo label="Fecha creada"   val={fmtF(detalle.fecha||detalle.createdAt)}/>
+            <Campo label="Producto"       val={detalle.producto}/>
+            <Campo label="Tipo CNBV"      val={detalle.tipoCNBV}/>
+            <Campo label="Monto"          val={fmt(detalle.monto)}/>
+            <Campo label="Plazo"          val={`${detalle.plazo} periodos`}/>
+            <Campo label="Frecuencia"     val={detalle.frecuencia}/>
+            <Campo label="Tasa interés"   val={`${detalle.tasaInteres||0}%`}/>
+            <Campo label="Tasa moratoria" val={`${detalle.tasaMoratoria||0}%`}/>
+            <Campo label="Destino"        val={detalle.destino||'—'}/>
+          </div>
+        </Sec>
+
+        {detalle.tipo!=='GRUPAL' && (
+          <Sec titulo="Cliente" icono={<User size={15}/>}>
+            <div style={{display:'flex',gap:'16px',flexWrap:'wrap',marginBottom:'10px'}}>
+              <Campo label="Nombre" val={detalle.clienteNombre} w="100%"/>
+              <Campo label="CURP"   val={detalle.clienteCurp}/>
+              <Campo label="Ruta"   val={detalle.rutaVinculacion||'—'}/>
+            </div>
+          </Sec>
+        )}
+
+        {detalle.tipo==='GRUPAL' && (detalle.miembros||[]).length>0 && (
+          <Sec titulo="Miembros del grupo" icono={<User size={15}/>}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
+              <thead><tr style={{background:'#0d1f5c'}}>
+                {['#','Nombre','CURP','Monto individual'].map(h=>(
+                  <th key={h} style={{padding:'7px 10px',color:'#b8cde8',textAlign:'left',fontSize:'11px',fontWeight:'700'}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>{detalle.miembros.map((m,i)=>(
+                <tr key={i} style={{background:i%2===0?'#fff':'#f8fbff',borderBottom:'1px solid #f0f4f8'}}>
+                  <td style={{padding:'7px 10px',fontWeight:'700',color:'#0e50a0'}}>{i+1}</td>
+                  <td style={{padding:'7px 10px',fontWeight:'600',textTransform:'uppercase'}}>{m.nombre}</td>
+                  <td style={{padding:'7px 10px',fontFamily:'monospace',fontSize:'11px'}}>{m.curp||'—'}</td>
+                  <td style={{padding:'7px 10px',fontWeight:'700'}}>{fmt(m.montoIndividual)}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </Sec>
+        )}
+
+        {(detalle.avales||[]).length>0 && (
+          <Sec titulo="Avales" icono={<User size={15}/>}>
+            {detalle.avales.map((av,i)=>(
+              <div key={i} style={{display:'flex',gap:'16px',flexWrap:'wrap',padding:'8px 0',borderBottom:'1px solid #f0f4f8',fontSize:'12px'}}>
+                <span><b>Nombre:</b> {av.nombre||'—'}</span>
+                <span><b>CURP:</b> {av.curp||'—'}</span>
+                <span><b>Tel:</b> {av.telefono||'—'}</span>
+              </div>
+            ))}
+          </Sec>
+        )}
+
+        <Sec titulo="Información financiera" icono={<DollarSign size={15}/>}>
+          <div style={{display:'flex',gap:'16px',flexWrap:'wrap',marginBottom:'10px'}}>
+            <Campo label="Ingreso mensual"   val={fmt(detalle.ingresoMensual)}/>
+            <Campo label="Otros ingresos"    val={fmt(detalle.otrosIngresos)}/>
+            <Campo label="Total gastos"      val={fmt(totalGastos)}/>
+            <Campo label="Disponible mensual" val={fmt((parseFloat(detalle.ingresoMensual)||0)+(parseFloat(detalle.otrosIngresos)||0)-totalGastos)}/>
+          </div>
+        </Sec>
+
+        {(detalle.tablaPagos||[]).length>0 && (
+          <Sec titulo={`Tabla de pagos (${detalle.tablaPagos.length} periodos)`} icono={<FileText size={15}/>}>
+            <div style={{overflowX:'auto',maxHeight:'220px',overflowY:'auto',borderRadius:'8px',border:'1px solid #dceaf8'}}>
+              <table style={{width:'100%',borderCollapse:'collapse',fontSize:'11.5px'}}>
+                <thead style={{position:'sticky',top:0}}>
+                  <tr style={{background:'#0d1f5c'}}>
+                    {['#','Fecha','Cap. pend.','Abono cap.','Interés','IVA','Pago total','Saldo'].map(h=>(
+                      <th key={h} style={{padding:'6px 8px',color:'#b8cde8',fontSize:'10px',fontWeight:'700',textAlign:'right',whiteSpace:'nowrap'}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {detalle.tablaPagos.map((f,i)=>(
+                    <tr key={i} style={{background:i%2===0?'#fff':'#f8fbff'}}>
+                      <td style={{padding:'5px 8px',textAlign:'right',color:'#0e50a0',fontWeight:'700'}}>{f.periodo}</td>
+                      <td style={{padding:'5px 8px',textAlign:'right',fontFamily:'monospace',fontSize:'10px'}}>{f.fecha}</td>
+                      <td style={{padding:'5px 8px',textAlign:'right'}}>{fmt(f.capitalPendiente)}</td>
+                      <td style={{padding:'5px 8px',textAlign:'right',color:'#166534',fontWeight:'600'}}>{fmt(f.abonoCapital)}</td>
+                      <td style={{padding:'5px 8px',textAlign:'right',color:'#dc2626'}}>{fmt(f.interes)}</td>
+                      <td style={{padding:'5px 8px',textAlign:'right'}}>{fmt(f.iva||0)}</td>
+                      <td style={{padding:'5px 8px',textAlign:'right',fontWeight:'700'}}>{fmt(f.pagoTotal)}</td>
+                      <td style={{padding:'5px 8px',textAlign:'right'}}>{fmt(f.saldoFinal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Sec>
+        )}
+
+        {detalle.motivoRechazo && (
+          <div style={{background:'#fee2e2',borderRadius:'10px',padding:'14px',marginBottom:'16px',border:'1px solid #fca5a5'}}>
+            <div style={{fontWeight:'700',color:'#dc2626',marginBottom:'4px'}}>Motivo de rechazo</div>
+            <div style={{fontSize:'13px',color:'#991b1b'}}>{detalle.motivoRechazo}</div>
+          </div>
+        )}
+
+        {/* Modal Aprobar */}
+        {modalAprob && (
+          <div style={{position:'fixed',inset:0,background:'rgba(5,15,40,0.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000,padding:'20px'}}>
+            <div style={{background:'#fff',borderRadius:'16px',width:'100%',maxWidth:'420px',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}}>
+              <div style={{background:'#166634',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <span style={{color:'#fff',fontWeight:'700',fontSize:'16px',fontFamily:"'Cormorant Garamond',serif"}}>Aprobar solicitud</span>
+                <button onClick={()=>{setModalAprob(false);setFechaInicio('');}} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><X size={16}/></button>
+              </div>
+              <div style={{padding:'20px'}}>
+                <div style={{background:'#f0fdf4',borderRadius:'10px',padding:'12px',marginBottom:'16px',border:'1px solid #86efac'}}>
+                  <div style={{fontWeight:'700',color:'#166534',marginBottom:'4px'}}>{detalle.clienteNombre||detalle.nombreGrupo}</div>
+                  <div style={{fontSize:'12px',color:'#555',display:'flex',gap:'14px'}}>
+                    <span><b>Producto:</b> {detalle.producto}</span>
+                    <span><b>Monto:</b> {fmt(detalle.monto)}</span>
+                  </div>
+                </div>
+                <div style={{marginBottom:'16px'}}>
+                  <label style={{fontSize:'11px',fontWeight:'700',color:'#90aac8',textTransform:'uppercase',letterSpacing:'0.06em',display:'block',marginBottom:'6px'}}>Fecha de inicio del crédito *</label>
+                  <input type="date" value={fechaInicio} onChange={e=>setFechaInicio(e.target.value)} style={{...inp,width:'100%'}}/>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+                  <button onClick={aprobarSolicitud} disabled={accionando}
+                    style={{background:'#22c55e',color:'#fff',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'700',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
+                    {accionando?<Loader size={13} style={{animation:'spin 1s linear infinite'}}/>:<CheckCircle size={13}/>} Confirmar
+                  </button>
+                  <button onClick={()=>{setModalAprob(false);setFechaInicio('');}}
+                    style={{background:'#f1f5f9',color:'#475569',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Rechazar */}
+        {modalRechaz && (
+          <div style={{position:'fixed',inset:0,background:'rgba(5,15,40,0.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000,padding:'20px'}}>
+            <div style={{background:'#fff',borderRadius:'16px',width:'100%',maxWidth:'400px',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}}>
+              <div style={{background:'#dc2626',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <span style={{color:'#fff',fontWeight:'700',fontSize:'16px',fontFamily:"'Cormorant Garamond',serif"}}>Rechazar solicitud</span>
+                <button onClick={()=>{setModalRechaz(false);setMotivoRech('');}} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><X size={16}/></button>
+              </div>
+              <div style={{padding:'20px'}}>
+                <div style={{marginBottom:'16px'}}>
+                  <label style={{fontSize:'11px',fontWeight:'700',color:'#90aac8',textTransform:'uppercase',letterSpacing:'0.06em',display:'block',marginBottom:'6px'}}>Motivo del rechazo</label>
+                  <textarea value={motivoRech} onChange={e=>setMotivoRech(e.target.value)} rows={3} placeholder="Describe el motivo..." style={{...inp,width:'100%',resize:'vertical'}}/>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+                  <button onClick={rechazarSolicitud} disabled={accionando}
+                    style={{background:'#dc2626',color:'#fff',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'700',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
+                    {accionando?<Loader size={13} style={{animation:'spin 1s linear infinite'}}/>:<XCircle size={13}/>} Confirmar
+                  </button>
+                  <button onClick={()=>{setModalRechaz(false);setMotivoRech('');}}
+                    style={{background:'#f1f5f9',color:'#475569',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+      </div>
+    );
+  }
+
+  // ════════ VISTA LISTA ════════
   return (
-    <div style={{ maxWidth: '980px', margin: '0 auto', fontFamily: 'DM Sans, sans-serif' }}>
-
-      {/* Notificación */}
+    <div style={{maxWidth:'980px',margin:'0 auto',fontFamily:'DM Sans,sans-serif'}}>
       {notif && (
-        <div style={{ background: notif.tipo === 'ok' ? '#dcfce7' : '#fee2e2', border: `1px solid ${notif.tipo === 'ok' ? '#86efac' : '#fca5a5'}`, borderRadius: '12px', padding: '13px 18px', marginBottom: '18px', color: notif.tipo === 'ok' ? '#166534' : '#dc2626', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {notif.tipo === 'ok' ? <CheckCircle size={16} /> : <AlertCircle size={16} />} {notif.msg}
+        <div style={{background:notif.tipo==='ok'?'#dcfce7':'#fee2e2',border:`1px solid ${notif.tipo==='ok'?'#86efac':'#fca5a5'}`,borderRadius:'12px',padding:'12px 18px',marginBottom:'16px',color:notif.tipo==='ok'?'#166534':'#dc2626',fontSize:'13px',fontWeight:'600',display:'flex',alignItems:'center',gap:'8px'}}>
+          {notif.tipo==='ok'?<CheckCircle size={15}/>:<AlertCircle size={15}/>}{notif.msg}
         </div>
       )}
 
-      {/* Filtros */}
-      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #dceaf8', boxShadow: '0 2px 12px rgba(14,80,160,0.05)', padding: '18px 24px', marginBottom: '18px' }}>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ flex: 1, minWidth: '200px' }}>
-            <label style={{ fontSize: '11px', fontWeight: '700', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>Buscar</label>
-            <div style={{ position: 'relative' }}>
-              <Search size={15} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: '#90aac8', pointerEvents: 'none' }} />
-              <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
-                placeholder="Nombre, CURP o grupo..." style={{ ...inp, width: '100%', paddingLeft: '38px' }} />
-            </div>
-          </div>
-          <div style={{ minWidth: '160px' }}>
-            <label style={{ fontSize: '11px', fontWeight: '700', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>Estatus</label>
-            <select value={filtroEstatus} onChange={e => setFiltroEstatus(e.target.value)} style={{ ...inp, cursor: 'pointer', width: '100%' }}>
-              <option value="">Todos los estatus</option>
-              <option value="Pendiente">Pendiente</option>
-              <option value="En revisión">En revisión</option>
-              <option value="Aprobada">Aprobada</option>
-              <option value="Rechazada">Rechazada</option>
-              <option value="Cancelada">Cancelada</option>
-            </select>
-          </div>
-          <button onClick={cargar} style={{ background: '#e8f2fc', border: '1px solid #dceaf8', borderRadius: '9px', padding: '10px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '600', color: '#0e50a0' }}>
-            <RefreshCw size={14} /> Actualizar
+      {/* Botones filtro — igual al sistema original */}
+      <div style={{display:'flex',gap:'8px',marginBottom:'20px',flexWrap:'wrap',alignItems:'center'}}>
+        {[
+          {key:'pendientes', label:'Ver pendientes', bg:'#0e50a0'},
+          {key:'aprobadas',  label:'Ver aprobadas',  bg:'#166534'},
+          {key:'rechazadas', label:'Ver rechazadas', bg:'#dc2626'},
+        ].map(btn=>(
+          <button key={btn.key} onClick={()=>setFiltroBtn(btn.key)}
+            style={{background:filtroBtn===btn.key?btn.bg:'#fff',color:filtroBtn===btn.key?'#fff':btn.bg,border:`1.5px solid ${btn.bg}`,borderRadius:'9px',padding:'9px 18px',fontSize:'13px',fontWeight:'700',cursor:'pointer',fontFamily:'DM Sans,sans-serif'}}>
+            {btn.label}
           </button>
-        </div>
+        ))}
+        <button onClick={cargar} style={{background:'#f4f8fd',border:'1px solid #dceaf8',borderRadius:'9px',padding:'9px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontSize:'13px',fontWeight:'600',color:'#0e50a0',marginLeft:'auto'}}>
+          <RefreshCw size={13}/> Actualizar
+        </button>
       </div>
 
-      {/* Tabla */}
-      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #dceaf8', boxShadow: '0 2px 12px rgba(14,80,160,0.05)', overflow: 'hidden' }}>
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f6ff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '32px', height: '32px', background: '#e8f2fc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <FileText size={16} color="#0e50a0" />
-          </div>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '18px', fontWeight: '700', color: '#0a2d5e' }}>Solicitudes de crédito</span>
-          <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#90aac8', background: '#f4f8fd', borderRadius: '20px', padding: '3px 10px', fontWeight: '600' }}>{filtradas.length} resultado(s)</span>
+      <div style={{background:'#fff',borderRadius:'16px',border:'1px solid #dceaf8',boxShadow:'0 2px 12px rgba(14,80,160,0.05)',overflow:'hidden'}}>
+        {/* Header centrado — igual al sistema original */}
+        <div style={{padding:'18px 24px 14px',borderBottom:'1px solid #f0f6ff',textAlign:'center'}}>
+          <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'22px',fontWeight:'700',color:'#0a2d5e',margin:'0 0 2px'}}>Solicitudes de crédito</h2>
+          <div style={{fontSize:'14px',fontWeight:'700',color:'#0e50a0',marginBottom:'2px'}}>{subtituloMap[filtroBtn]}</div>
+          <div style={{fontSize:'12px',color:'#90aac8'}}>Dirección General tiene acceso a toda la información</div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        {/* Buscador */}
+        <div style={{padding:'14px 24px',borderBottom:'1px solid #f0f6ff'}}>
+          <div style={{position:'relative'}}>
+            <Search size={14} style={{position:'absolute',left:'13px',top:'50%',transform:'translateY(-50%)',color:'#90aac8',pointerEvents:'none'}}/>
+            <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
+              placeholder="Buscar solicitud por nombre cliente, id solicitud, monto"
+              style={{...inp,width:'100%',paddingLeft:'38px'}}/>
+          </div>
+        </div>
+
+        {/* Tabla */}
+        <div style={{overflowX:'auto'}}>
           {cargando ? (
-            <div style={{ padding: '60px', textAlign: 'center', color: '#90aac8', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-              <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Cargando solicitudes...
+            <div style={{padding:'50px',textAlign:'center',color:'#90aac8',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px'}}>
+              <Loader size={18} style={{animation:'spin 1s linear infinite'}}/> Cargando...
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead>
-                <tr style={{ background: '#0d1f5c' }}>
-                  {['Folio', 'Cliente', 'Producto', 'Monto', 'Plazo', 'Frecuencia', 'Estatus', 'Fecha', 'Acciones'].map(h => (
-                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: '11px', fontWeight: '700', color: '#b8cde8', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                <tr style={{background:'#e8f2fc'}}>
+                  {['Numero solicitud (ID)','Tipo solicitud','Nombre','Monto','Fecha creada','Captura Origen',''].map(h=>(
+                    <th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:'12px',fontWeight:'700',color:'#0a2d5e',borderBottom:'2px solid #dceaf8',whiteSpace:'nowrap'}}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtradas.length === 0 ? (
-                  <tr><td colSpan={9} style={{ padding: '50px', textAlign: 'center', color: '#90aac8', fontSize: '13px' }}>No se encontraron solicitudes</td></tr>
-                ) : filtradas.map((s, i) => (
-                  <tr key={s._id} style={{ borderTop: '1px solid #f0f6ff', background: i % 2 === 0 ? '#fff' : '#fafcff' }}>
-                    <td style={{ padding: '11px 14px', fontFamily: 'monospace', fontSize: '11px', color: '#0e50a0', fontWeight: '700' }}>{s._id?.slice(-8).toUpperCase()}</td>
-                    <td style={{ padding: '11px 14px', fontSize: '13px', fontWeight: '600', color: '#0a2d5e', textTransform: 'uppercase', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {s.tipo === 'GRUPAL' ? `👥 ${s.nombreGrupo || 'Grupo'}` : (s.clienteNombre || '—')}
+                {filtradas.length===0 ? (
+                  <tr><td colSpan={7} style={{padding:'50px',textAlign:'center',color:'#90aac8',fontSize:'13px'}}>
+                    No hay solicitudes {filtroBtn}
+                  </td></tr>
+                ) : filtradas.map((s,i)=>(
+                  <tr key={s._id} style={{borderBottom:'1px solid #f0f6ff',background:i%2===0?'#fff':'#fafcff'}}>
+                    <td style={{padding:'11px 14px',fontSize:'13px',fontWeight:'700',color:'#0e50a0',fontFamily:'monospace'}}>{s._id?.slice(-8).toUpperCase()}</td>
+                    <td style={{padding:'11px 14px',fontSize:'13px',color:'#444',textTransform:'uppercase'}}>{s.producto||'—'}</td>
+                    <td style={{padding:'11px 14px',fontSize:'13px',fontWeight:'600',color:'#0a2d5e',textTransform:'uppercase'}}>
+                      {s.tipo==='GRUPAL'?`👥 ${s.nombreGrupo||'Grupo'}`:(s.clienteNombre||'—')}
                     </td>
-                    <td style={{ padding: '11px 14px', fontSize: '13px', color: '#4a6a94' }}>{s.producto || '—'}</td>
-                    <td style={{ padding: '11px 14px', fontSize: '13px', fontWeight: '700', color: '#0d1f5c' }}>{fmt(s.monto)}</td>
-                    <td style={{ padding: '11px 14px', fontSize: '13px', color: '#4a6a94', textAlign: 'center' }}>{s.plazo || '—'}</td>
-                    <td style={{ padding: '11px 14px', fontSize: '13px', color: '#4a6a94' }}>{s.frecuencia || '—'}</td>
-                    <td style={{ padding: '11px 14px' }}><Pill v={s.estatus} /></td>
-                    <td style={{ padding: '11px 14px', fontSize: '12px', color: '#90aac8' }}>{fmtF(s.fecha || s.createdAt)}</td>
-                    <td style={{ padding: '11px 14px' }}>
-                      <div style={{ display: 'flex', gap: '5px' }}>
-                        <button onClick={() => setSeleccionado(s)}
-                          style={{ background: '#e8f2fc', border: 'none', borderRadius: '7px', padding: '6px 11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '600', color: '#0e50a0' }}>
-                          <Eye size={12} /> Ver
-                        </button>
-                        {s.estatus === 'Pendiente' && (
-                          <>
-                            <button onClick={() => { setSeleccionado(s); setModalAprob(true); }}
-                              style={{ background: '#dcfce7', border: 'none', borderRadius: '7px', padding: '6px 11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '600', color: '#166534' }}>
-                              <Check size={12} /> Aprobar
-                            </button>
-                            <button onClick={() => { setSeleccionado(s); setModalRechaz(true); }}
-                              style={{ background: '#fee2e2', border: 'none', borderRadius: '7px', padding: '6px 11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '600', color: '#dc2626' }}>
-                              <XCircle size={12} /> Rechazar
-                            </button>
-                          </>
-                        )}
-                      </div>
+                    <td style={{padding:'11px 14px',fontSize:'13px',fontWeight:'700',color:'#0d1f5c'}}>{fmt(s.monto)}</td>
+                    <td style={{padding:'11px 14px',fontSize:'12px',color:'#90aac8'}}>{fmtF(s.fecha||s.createdAt)}</td>
+                    <td style={{padding:'11px 14px',fontSize:'12px',color:'#555'}}>SISTEMA</td>
+                    <td style={{padding:'11px 14px'}}>
+                      <button onClick={()=>{setDetalle(s);setVista('detalle');}}
+                        style={{background:'#0e9cb5',color:'#fff',border:'none',borderRadius:'7px',padding:'7px 18px',cursor:'pointer',fontSize:'12px',fontWeight:'700',fontFamily:'DM Sans,sans-serif'}}>
+                        Consultar
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -229,235 +422,6 @@ export default function ConsultarSolicitud() {
           )}
         </div>
       </div>
-
-      {/* ═══ MODAL VER DETALLE ═══ */}
-      {seleccionado && !modalAprob && !modalRechaz && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(10,45,94,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-          <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '580px', boxShadow: '0 24px 80px rgba(10,45,94,0.2)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
-
-            {/* Header */}
-            <div style={{ borderBottom: '1px solid #dceaf8', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '38px', height: '38px', background: '#e8f2fc', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FileText size={18} color="#0e50a0" /></div>
-                <div>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e' }}>
-                    {seleccionado.tipo === 'GRUPAL' ? seleccionado.nombreGrupo : seleccionado.clienteNombre}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#90aac8', marginTop: '2px' }}>Solicitud · {seleccionado._id?.slice(-8).toUpperCase()}</div>
-                </div>
-              </div>
-              <button onClick={() => setSeleccionado(null)} style={{ background: '#f0f6ff', border: 'none', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#4a6a94' }}><X size={16} /></button>
-            </div>
-
-            {/* Cuerpo */}
-            <div style={{ padding: '20px 24px' }}>
-              {/* Datos principales */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                {[
-                  ['Producto',       seleccionado.producto],
-                  ['Monto',          fmt(seleccionado.monto)],
-                  ['Plazo',          `${seleccionado.plazo} periodos`],
-                  ['Frecuencia',     seleccionado.frecuencia],
-                  ['Tasa interés',   `${seleccionado.tasaInteres || 0}%`],
-                  ['Tipo CNBV',      seleccionado.tipoCNBV || '—'],
-                  ['Destino',        seleccionado.destino || '—'],
-                  ['Fecha',          fmtF(seleccionado.fecha || seleccionado.createdAt)],
-                ].map(([label, val]) => (
-                  <div key={label} style={{ background: '#f4f8fd', borderRadius: '10px', padding: '10px 12px', border: '1px solid #dceaf8' }}>
-                    <div style={{ fontSize: '10px', fontWeight: '700', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '3px' }}>{label}</div>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#0a2d5e' }}>{val || '—'}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Estatus */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '700', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Estatus:</span>
-                <Pill v={seleccionado.estatus} />
-              </div>
-
-              {/* Cliente / Grupo */}
-              {seleccionado.tipo === 'GRUPAL' && (seleccionado.miembros || []).length > 0 && (
-                <div style={{ marginBottom: '14px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#0e50a0', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#e8f2fc', borderRadius: '6px', padding: '5px 12px', marginBottom: '8px' }}>
-                    Miembros del grupo
-                  </div>
-                  {seleccionado.miembros.map((m, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 10px', background: i % 2 === 0 ? '#fff' : '#f8fbff', borderRadius: '6px', fontSize: '12px' }}>
-                      <span style={{ fontWeight: '600', textTransform: 'uppercase' }}>{m.nombre}</span>
-                      <span style={{ color: '#0e50a0', fontWeight: '700' }}>{fmt(m.montoIndividual)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {seleccionado.tipo !== 'GRUPAL' && (
-                <div style={{ marginBottom: '14px', background: '#f4f8fd', borderRadius: '10px', padding: '12px 14px', border: '1px solid #dceaf8' }}>
-                  <div style={{ fontSize: '10px', fontWeight: '700', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Datos del cliente</div>
-                  <div style={{ fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', color: '#0a2d5e' }}>{seleccionado.clienteNombre || '—'}</div>
-                  <div style={{ fontSize: '11px', color: '#90aac8', marginTop: '3px' }}>CURP: {seleccionado.clienteCurp || '—'} · Ruta: {seleccionado.rutaVinculacion || '—'}</div>
-                </div>
-              )}
-
-              {/* Avales */}
-              {(seleccionado.avales || []).length > 0 && (
-                <div style={{ marginBottom: '14px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#0e50a0', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#e8f2fc', borderRadius: '6px', padding: '5px 12px', marginBottom: '8px' }}>Avales</div>
-                  {seleccionado.avales.map((av, i) => (
-                    <div key={i} style={{ fontSize: '12px', padding: '5px 0', borderBottom: '1px solid #f0f4f8', display: 'flex', gap: '16px' }}>
-                      <span><b>Nombre:</b> {av.nombre || '—'}</span>
-                      <span><b>CURP:</b> {av.curp || '—'}</span>
-                      <span><b>Tel:</b> {av.telefono || '—'}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Info financiera */}
-              <div style={{ marginBottom: '14px', background: '#f4f8fd', borderRadius: '10px', padding: '12px 14px', border: '1px solid #dceaf8' }}>
-                <div style={{ fontSize: '10px', fontWeight: '700', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Información financiera</div>
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '12px' }}>
-                  <span><b>Ingreso mensual:</b> {fmt(seleccionado.ingresoMensual)}</span>
-                  <span><b>Otros ingresos:</b> {fmt(seleccionado.otrosIngresos)}</span>
-                  <span><b>Total gastos:</b> {fmt(Object.values(seleccionado.gastos || {}).reduce((a, v) => a + (parseFloat(v) || 0), 0))}</span>
-                </div>
-              </div>
-
-              {/* Tabla de pagos */}
-              {(seleccionado.tablaPagos || []).length > 0 && (
-                <div style={{ marginBottom: '14px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#0e50a0', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#e8f2fc', borderRadius: '6px', padding: '5px 12px', marginBottom: '8px' }}>
-                    Tabla de pagos simulada ({seleccionado.tablaPagos.length} periodos)
-                  </div>
-                  <div style={{ overflowX: 'auto', maxHeight: '200px', overflowY: 'auto', borderRadius: '8px', border: '1px solid #dceaf8' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
-                      <thead style={{ position: 'sticky', top: 0 }}>
-                        <tr style={{ background: '#0d1f5c' }}>
-                          {['#', 'Fecha', 'Abono cap.', 'Interés', 'Pago total', 'Saldo'].map(h => (
-                            <th key={h} style={{ padding: '6px 8px', color: '#b8cde8', fontSize: '10px', fontWeight: '700', textAlign: 'right', whiteSpace: 'nowrap' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {seleccionado.tablaPagos.map((f, i) => (
-                          <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f8fbff' }}>
-                            <td style={{ padding: '5px 8px', textAlign: 'right', color: '#0e50a0', fontWeight: '700' }}>{f.periodo}</td>
-                            <td style={{ padding: '5px 8px', textAlign: 'right', fontFamily: 'monospace', fontSize: '10px' }}>{f.fecha}</td>
-                            <td style={{ padding: '5px 8px', textAlign: 'right', color: '#166534', fontWeight: '600' }}>{fmt(f.abonoCapital)}</td>
-                            <td style={{ padding: '5px 8px', textAlign: 'right', color: '#dc2626' }}>{fmt(f.interes)}</td>
-                            <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: '700' }}>{fmt(f.pagoTotal)}</td>
-                            <td style={{ padding: '5px 8px', textAlign: 'right' }}>{fmt(f.saldoFinal)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Motivo rechazo */}
-              {seleccionado.motivoRechazo && (
-                <div style={{ background: '#fee2e2', borderRadius: '10px', padding: '12px 14px', marginBottom: '14px', border: '1px solid #fca5a5' }}>
-                  <div style={{ fontWeight: '700', color: '#dc2626', marginBottom: '4px', fontSize: '12px' }}>Motivo de rechazo</div>
-                  <div style={{ fontSize: '13px', color: '#991b1b' }}>{seleccionado.motivoRechazo}</div>
-                </div>
-              )}
-            </div>
-
-            {/* Acciones */}
-            <div style={{ padding: '0 24px 22px', display: 'flex', gap: '10px' }}>
-              {seleccionado.estatus === 'Pendiente' ? (
-                <>
-                  <button onClick={() => { setModalRechaz(true); }}
-                    style={{ flex: 1, padding: '11px', border: '1.5px solid #fca5a5', background: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#dc2626', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                    <XCircle size={14} /> Rechazar
-                  </button>
-                  <button onClick={() => setModalAprob(true)}
-                    style={{ flex: 2, padding: '11px', border: 'none', background: '#166534', borderRadius: '10px', fontSize: '13px', fontWeight: '700', color: '#fff', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(22,101,52,0.25)' }}>
-                    <Check size={14} /> Aprobar solicitud
-                  </button>
-                </>
-              ) : (
-                <button onClick={() => setSeleccionado(null)}
-                  style={{ width: '100%', padding: '11px', border: '1.5px solid #dceaf8', background: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: '600', color: '#4a6a94', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-                  Cerrar
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ MODAL APROBAR ═══ */}
-      {modalAprob && seleccionado && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,15,40,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' }}>
-          <div style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '420px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
-            <div style={{ background: '#166534', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: '700', fontSize: '16px', fontFamily: "'Cormorant Garamond', serif" }}>Aprobar solicitud</span>
-              <button onClick={() => { setModalAprob(false); setFechaInicio(''); }} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={16} /></button>
-            </div>
-            <div style={{ padding: '20px' }}>
-              <div style={{ background: '#f0fdf4', borderRadius: '10px', padding: '12px', marginBottom: '16px', border: '1px solid #86efac' }}>
-                <div style={{ fontWeight: '700', color: '#166534', fontSize: '14px', marginBottom: '4px' }}>
-                  {seleccionado.tipo === 'GRUPAL' ? seleccionado.nombreGrupo : seleccionado.clienteNombre}
-                </div>
-                <div style={{ fontSize: '12px', color: '#555', display: 'flex', gap: '14px' }}>
-                  <span><b>Producto:</b> {seleccionado.producto}</span>
-                  <span><b>Monto:</b> {fmt(seleccionado.monto)}</span>
-                </div>
-              </div>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '6px' }}>Fecha de inicio del crédito *</label>
-                <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)}
-                  style={{ ...inp, width: '100%' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <button onClick={aprobarSolicitud} disabled={accionando}
-                  style={{ background: '#22c55e', color: '#fff', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                  {accionando ? <Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={13} />}
-                  Confirmar y crear crédito
-                </button>
-                <button onClick={() => { setModalAprob(false); setFechaInicio(''); }}
-                  style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ MODAL RECHAZAR ═══ */}
-      {modalRechaz && seleccionado && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,15,40,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' }}>
-          <div style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '400px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
-            <div style={{ background: '#dc2626', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: '700', fontSize: '16px', fontFamily: "'Cormorant Garamond', serif" }}>Rechazar solicitud</span>
-              <button onClick={() => { setModalRechaz(false); setMotivoRech(''); }} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={16} /></button>
-            </div>
-            <div style={{ padding: '20px' }}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '6px' }}>Motivo del rechazo</label>
-                <textarea value={motivoRech} onChange={e => setMotivoRech(e.target.value)}
-                  rows={3} placeholder="Describe el motivo..."
-                  style={{ ...inp, width: '100%', resize: 'vertical' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <button onClick={rechazarSolicitud} disabled={accionando}
-                  style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                  {accionando ? <Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <XCircle size={13} />}
-                  Confirmar rechazo
-                </button>
-                <button onClick={() => { setModalRechaz(false); setMotivoRech(''); }}
-                  style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '10px', padding: '11px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
   );
