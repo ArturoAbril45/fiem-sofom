@@ -19,20 +19,19 @@ function Sec({titulo,icono,children}) {
 }
 
 function Campo({label,val,w='auto'}) {
-
-function FieldRO({label,val}) {
-  return (
-    <div style={{display:"flex",alignItems:"center",gap:"5px",flexWrap:"wrap"}}>
-      <span style={{fontSize:"11px",fontWeight:"700",color:"#90aac8",textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{label}:</span>
-      <span style={{border:"1.5px solid #dceaf8",borderRadius:"6px",padding:"4px 10px",fontSize:"13px",fontFamily:"DM Sans,sans-serif",color:"#1a3d6e",background:"#f8fbff",fontWeight:"600"}}>{val||"—"}</span>
-    </div>
-  );
-}
-
   return (
     <div style={{minWidth:'120px',width:w,marginBottom:'4px'}}>
       <div style={{fontSize:'10px',fontWeight:'700',color:'#90aac8',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'2px'}}>{label}</div>
       <div style={{fontSize:'13px',fontWeight:'600',color:'#0a2d5e'}}>{val||'—'}</div>
+    </div>
+  );
+}
+
+function FieldRO({label,val}) {
+  return (
+    <div style={{display:'flex',alignItems:'center',gap:'5px',flexWrap:'wrap',marginBottom:'4px'}}>
+      <span style={{fontSize:'11px',fontWeight:'700',color:'#90aac8',textTransform:'uppercase',letterSpacing:'0.05em',whiteSpace:'nowrap'}}>{label}:</span>
+      <span style={{border:'1.5px solid #dceaf8',borderRadius:'6px',padding:'4px 10px',fontSize:'13px',fontFamily:'DM Sans,sans-serif',color:'#1a3d6e',background:'#f8fbff',fontWeight:'600'}}>{val||'—'}</span>
     </div>
   );
 }
