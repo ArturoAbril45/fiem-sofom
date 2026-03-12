@@ -6,18 +6,18 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'https://fiem-backend-production.
 const fmtMoney = v => `$${(parseFloat(v)||0).toLocaleString('es-MX',{minimumFractionDigits:2})}`;
 
 const S = {
-  card:    { background:'#fff', borderRadius:'4px', borderWidth:'1px', borderStyle:'solid', borderColor:'#ccc', marginBottom:'14px', overflow:'hidden' },
-  head:    { padding:'10px 16px', background:'#f9f6ed', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#ccc', fontFamily:"'Cormorant Garamond',serif", fontSize:'16px', fontWeight:'700', color:'#0a2d5e' },
-  body:    { padding:'14px 16px' },
-  input:   { border:'1px solid #bbb', borderRadius:'3px', padding:'4px 8px', fontSize:'13px', fontFamily:'DM Sans,sans-serif', color:'#1a1a1a', outline:'none', background:'#fff', boxSizing:'border-box' },
-  inputRO: { border:'1px solid #ddd', borderRadius:'3px', padding:'4px 8px', fontSize:'13px', fontFamily:'DM Sans,sans-serif', color:'#555', outline:'none', background:'#f4f4f4', boxSizing:'border-box' },
-  lbl:     { fontSize:'12px', fontWeight:'600', color:'#333', marginRight:'4px', whiteSpace:'nowrap' },
-  sel:     { border:'1px solid #bbb', borderRadius:'3px', padding:'4px 7px', fontSize:'13px', fontFamily:'DM Sans,sans-serif', color:'#1a1a1a', outline:'none', background:'#fff', cursor:'pointer', boxSizing:'border-box' },
-  subHead: { background:'#d4edda', borderRadius:'2px', padding:'4px 10px', marginBottom:'8px', fontSize:'12px', fontWeight:'700', color:'#155724' },
-  btnVerde:{ background:'#28a745', color:'#fff', border:'none', borderRadius:'3px', padding:'11px 0', fontSize:'14px', fontWeight:'700', cursor:'pointer', width:'100%' },
-  btnOsc:  { background:'#212529', color:'#fff', border:'none', borderRadius:'3px', padding:'11px 0', fontSize:'14px', fontWeight:'700', cursor:'pointer', width:'100%' },
-  btnRojo: { background:'#dc3545', color:'#fff', border:'none', borderRadius:'3px', padding:'11px 0', fontSize:'14px', fontWeight:'700', cursor:'pointer', width:'100%' },
-  btnAzul: { background:'#007bff', color:'#fff', border:'none', borderRadius:'3px', padding:'6px 14px', fontSize:'12px', fontWeight:'600', cursor:'pointer' },
+  card:    { background:'#fff', borderRadius:'16px', borderWidth:'1px', borderStyle:'solid', borderColor:'#dceaf8', boxShadow:'0 2px 14px rgba(14,80,160,0.07)', marginBottom:'16px', overflow:'hidden' },
+  head:    { padding:'13px 20px', background:'#f4f8fd', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#dceaf8', fontFamily:"'Cormorant Garamond',serif", fontSize:'17px', fontWeight:'700', color:'#0a2d5e', display:'flex', alignItems:'center', gap:'10px' },
+  body:    { padding:'16px 20px' },
+  input:   { border:'1.5px solid #dceaf8', borderRadius:'8px', padding:'6px 11px', fontSize:'13px', fontFamily:'DM Sans,sans-serif', color:'#1a3d6e', outline:'none', background:'#fafcff', boxSizing:'border-box' },
+  inputRO: { border:'1.5px solid #f0f6ff', borderRadius:'8px', padding:'6px 11px', fontSize:'13px', fontFamily:'DM Sans,sans-serif', color:'#4a6a94', outline:'none', background:'#f8fbff', boxSizing:'border-box' },
+  lbl:     { fontSize:'11px', fontWeight:'700', color:'#90aac8', textTransform:'uppercase', letterSpacing:'0.06em', marginRight:'5px', whiteSpace:'nowrap' },
+  sel:     { border:'1.5px solid #dceaf8', borderRadius:'8px', padding:'6px 10px', fontSize:'13px', fontFamily:'DM Sans,sans-serif', color:'#1a3d6e', outline:'none', background:'#fafcff', cursor:'pointer', boxSizing:'border-box' },
+  subHead: { background:'#e8f2fc', borderRadius:'6px', padding:'5px 12px', marginBottom:'10px', fontSize:'11px', fontWeight:'700', color:'#0e50a0', textTransform:'uppercase', letterSpacing:'0.05em' },
+  btnVerde:{ background:'#22c55e', color:'#fff', border:'none', borderRadius:'10px', padding:'12px 0', fontSize:'14px', fontWeight:'700', cursor:'pointer', width:'100%', boxShadow:'0 4px 14px rgba(34,197,94,0.25)' },
+  btnOsc:  { background:'#0d1f5c', color:'#fff', border:'none', borderRadius:'10px', padding:'12px 0', fontSize:'14px', fontWeight:'700', cursor:'pointer', width:'100%', boxShadow:'0 4px 14px rgba(13,31,92,0.25)' },
+  btnRojo: { background:'#dc2626', color:'#fff', border:'none', borderRadius:'10px', padding:'12px 0', fontSize:'14px', fontWeight:'700', cursor:'pointer', width:'100%', boxShadow:'0 4px 14px rgba(220,38,38,0.2)' },
+  btnAzul: { background:'#0e50a0', color:'#fff', border:'none', borderRadius:'8px', padding:'7px 16px', fontSize:'12px', fontWeight:'600', cursor:'pointer', boxShadow:'0 3px 10px rgba(14,80,160,0.2)' },
 };
 
 const Lbl = ({children,w='auto'}) => <span style={{...S.lbl,width:w,display:'inline-block'}}>{children}</span>;
@@ -208,7 +208,7 @@ export default function NuevaSolicitud() {
   };
 
   const Msg = ({tipo,msg}) => msg ? (
-    <div style={{background:tipo==='ok'?'#d4edda':'#f8d7da',borderWidth:'1px',borderStyle:'solid',borderColor:tipo==='ok'?'#c3e6cb':'#f5c6cb',borderRadius:'4px',padding:'10px 14px',marginBottom:'12px',color:tipo==='ok'?'#155724':'#721c24',fontSize:'13px',fontWeight:'600',display:'flex',alignItems:'center',gap:'7px'}}>
+    <div style={{background:tipo==='ok'?'#dcfce7':'#fee2e2',borderWidth:'1px',borderStyle:'solid',borderColor:tipo==='ok'?'#86efac':'#fca5a5',borderRadius:'10px',padding:'10px 14px',marginBottom:'12px',color:tipo==='ok'?'#166534':'#dc2626',fontSize:'13px',fontWeight:'600',display:'flex',alignItems:'center',gap:'7px'}}>
       {tipo==='ok'?<CheckCircle size={14}/>:<AlertCircle size={14}/>}{msg}
     </div>
   ) : null;
@@ -221,18 +221,18 @@ export default function NuevaSolicitud() {
       <div style={S.card}>
         <div style={{padding:'18px 20px 10px',textAlign:'center'}}>
           <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'24px',fontWeight:'700',color:'#0a2d5e',margin:'0 0 6px'}}>Nueva solicitud de credito</h2>
-          <div style={{fontSize:'13px',fontWeight:'600',color:'#155724'}}>Seleccionar tipo de credito (paso 1 de 3)</div>
+          <div style={{fontSize:'13px',fontWeight:'700',color:'#0e50a0'}}>Seleccionar tipo de credito (paso 1 de 3)</div>
         </div>
         <div style={{marginTop:'12px'}}>
-          <div style={{padding:'7px 16px',background:'#c3e6cb',borderTopWidth:'1px',borderTopStyle:'solid',borderTopColor:'#b1dfbb',borderBottomWidth:'1px',borderBottomStyle:'solid',borderBottomColor:'#b1dfbb'}}>
-            <span style={{fontSize:'13px',fontWeight:'600',color:'#155724'}}>Nombre producto credito</span>
+          <div style={{padding:'8px 20px',background:'#e8f2fc',borderTopWidth:'1px',borderTopStyle:'solid',borderTopColor:'#dceaf8',borderBottomWidth:'1px',borderBottomStyle:'solid',borderBottomColor:'#dceaf8'}}>
+            <span style={{fontSize:'13px',fontWeight:'700',color:'#0e50a0'}}>Nombre producto credito</span>
           </div>
           {cargando && <div style={{padding:'24px',textAlign:'center'}}><Loader size={18} color="#0e50a0" style={{animation:'spin 1s linear infinite'}}/></div>}
           {productos.map((p,i)=>(
             <div key={p._id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 16px',borderBottomWidth:'1px',borderBottomStyle:'solid',borderBottomColor:'#eee',background:i%2===0?'#fff':'#fafafa'}}>
               <span style={{fontSize:'14px',fontWeight:'600',color:'#1a1a1a',textTransform:'uppercase'}}>{p.nombre}</span>
               <button onClick={()=>{setProdSel(p);if(p.tasa)setTasa(String(p.tasa));setPaso(2);}}
-                style={{background:'#28a745',color:'#fff',border:'none',borderRadius:'3px',padding:'9px 0',fontSize:'13px',fontWeight:'700',cursor:'pointer',width:'46%'}}>
+                style={{background:'#22c55e',color:'#fff',border:'none',borderRadius:'10px',padding:'10px 0',fontSize:'13px',fontWeight:'700',cursor:'pointer',width:'44%',boxShadow:'0 4px 12px rgba(34,197,94,0.25)'}}>
                 Seleccionar
               </button>
             </div>
@@ -270,7 +270,7 @@ export default function NuevaSolicitud() {
             </div>
             {errCli && <p style={{color:'#dc3545',fontSize:'12px',margin:'0 0 6px'}}>{errCli}</p>}
             {cliente ? (
-              <div style={{background:'#e8f4fd',borderRadius:'3px',padding:'9px 12px',borderWidth:'1px',borderStyle:'solid',borderColor:'#bee5eb',display:'flex',gap:'12px',alignItems:'center'}}>
+              <div style={{background:'#f0f7ff',borderRadius:'10px',padding:'10px 14px',borderWidth:'1px',borderStyle:'solid',borderColor:'#dceaf8',display:'flex',gap:'12px',alignItems:'center'}}>
                 <div style={{width:'34px',height:'34px',borderRadius:'50%',overflow:'hidden',background:'#dce8f0',flexShrink:0}}>
                   {(cliente.documentos?.fotoPerfil||cliente.fotos?.cliente)
                     ?<img src={cliente.documentos?.fotoPerfil||cliente.fotos?.cliente} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
@@ -329,7 +329,7 @@ export default function NuevaSolicitud() {
                           <Inp val={m.montoIndividual} onChange={v=>chMonto(i,v)} type="number" w="100px" ph="$0"/>
                         </td>
                         <td style={{padding:'6px 10px',borderBottomWidth:'1px',borderBottomStyle:'solid',borderBottomColor:'#eee'}}>
-                          <button onClick={()=>quitarMiembro(i)} style={{background:'#f8d7da',color:'#721c24',border:'none',borderRadius:'2px',padding:'3px 7px',cursor:'pointer'}}><X size={12}/></button>
+                          <button onClick={()=>quitarMiembro(i)} style={{background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:'6px',padding:'4px 8px',cursor:'pointer'}}><X size={12}/></button>
                         </td>
                       </tr>
                     ))}
@@ -375,7 +375,7 @@ export default function NuevaSolicitud() {
                     <div><div style={{...S.lbl,display:'block',marginBottom:'2px'}}>Nombre</div><Inp val={av.nombre} onChange={v=>chAval(i,'nombre',v)} w="100%"/></div>
                     <div><div style={{...S.lbl,display:'block',marginBottom:'2px'}}>CURP</div><Inp val={av.curp} onChange={v=>chAval(i,'curp',v.toUpperCase())} w="100%"/></div>
                     <div><div style={{...S.lbl,display:'block',marginBottom:'2px'}}>Teléfono</div><Inp val={av.telefono} onChange={v=>chAval(i,'telefono',v)} type="tel" w="100%"/></div>
-                    <button onClick={()=>quitarAval(i)} style={{background:'#f8d7da',color:'#721c24',border:'none',borderRadius:'2px',padding:'5px 7px',cursor:'pointer',marginBottom:'1px'}}><X size={12}/></button>
+                    <button onClick={()=>quitarAval(i)} style={{background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:'6px',padding:'5px 8px',cursor:'pointer',marginBottom:'1px'}}><X size={12}/></button>
                   </div>
                 ))}
               </div>
@@ -387,7 +387,7 @@ export default function NuevaSolicitud() {
       <div style={S.card}>
         <div style={S.head}>Caracteristicas principales</div>
         <div style={S.body}>
-          <div style={{background:'#f8d7da',borderRadius:'2px',height:'6px',marginBottom:'10px'}}/>
+          <div style={{background:'#e8f2fc',borderRadius:'6px',height:'4px',marginBottom:'12px'}}/>
           <div style={{display:'flex',gap:'10px',alignItems:'center',flexWrap:'wrap',marginBottom:'9px'}}>
             <div style={{display:'flex',alignItems:'center',gap:'4px'}}><Lbl>Tipo de credito:</Lbl><Sel val={prodSel?.nombre} onChange={()=>{}} opts={[prodSel?.nombre||'']} w="175px"/></div>
             <div style={{display:'flex',alignItems:'center',gap:'4px'}}><Lbl>Tipo (CNBV):</Lbl><Sel val={tipoCNBV} onChange={setTipoCNBV} opts={['AL CONSUMO','COMERCIAL','A LA VIVIENDA']} w="135px"/></div>
@@ -452,7 +452,7 @@ export default function NuevaSolicitud() {
       {/* ═══ MODAL SIMULADOR PROFESIONAL ═══ */}
       {modalPlan && (
         <div style={{position:'fixed',inset:0,background:'rgba(5,15,40,0.82)',display:'flex',alignItems:'flex-start',justifyContent:'center',zIndex:3000,padding:'24px 14px',overflowY:'auto'}}>
-          <div style={{background:'#fff',width:'100%',maxWidth:'980px',boxShadow:'0 10px 50px rgba(0,0,0,0.5)',fontFamily:'DM Sans,sans-serif',border:'none'}}>
+          <div style={{background:'#fff',width:'100%',maxWidth:'980px',boxShadow:'0 10px 50px rgba(0,0,0,0.5)',fontFamily:'DM Sans,sans-serif',borderRadius:'16px',overflow:'hidden'}}>
 
             {/* Header azul marino */}
             <div style={{background:'#0d1f5c',padding:'0'}}>
@@ -517,7 +517,7 @@ export default function NuevaSolicitud() {
             </div>
 
             <div style={{padding:'10px 18px',borderTopWidth:'1px',borderTopStyle:'solid',borderTopColor:'#dce4ef',display:'flex',justifyContent:'flex-end',background:'#f4f6fa'}}>
-              <button onClick={()=>setModalPlan(false)} style={{background:'#0d1f5c',color:'#fff',border:'none',padding:'8px 32px',fontSize:'13px',fontWeight:'700',cursor:'pointer',textTransform:'uppercase',letterSpacing:'0.07em'}}>
+              <button onClick={()=>setModalPlan(false)} style={{background:'#0d1f5c',color:'#fff',border:'none',padding:'9px 30px',fontSize:'13px',fontWeight:'700',cursor:'pointer',borderRadius:'10px',letterSpacing:'0.04em',boxShadow:'0 4px 14px rgba(13,31,92,0.3)'}}>
                 Cerrar
               </button>
             </div>
