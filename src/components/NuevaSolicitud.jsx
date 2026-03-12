@@ -54,7 +54,7 @@ const Msg = ({tipo,msg}) => msg ? (
 
 // ════════════════════════════════════════════════════════════
 export default function NuevaSolicitud() {
-  const [vista,       setVista]      = useState('lista');   // 'lista' | 'nueva' | 'detalle'
+  
   const [paso,        setPaso]       = useState(1);
   const [productos,   setProductos]  = useState([]);
   const [prodSel,     setProdSel]    = useState(null);
@@ -279,7 +279,7 @@ export default function NuevaSolicitud() {
       setMsgOk(`✅ Solicitud creada — Folio: ${data._id?.slice(-8).toUpperCase()||'—'}`);
       setTimeout(()=>setMsgOk(''),6000);
       resetForm();
-      setVista('lista');
+      
       fetchSolicitudes();
     } catch(e) { setMsgErr(e.message); setTimeout(()=>setMsgErr(''),5000); }
     finally { setEnviando(false); }
@@ -325,7 +325,7 @@ export default function NuevaSolicitud() {
       setModalAprob(false); setFechaInicio('');
       setTimeout(()=>setMsgOk(''),6000);
       fetchSolicitudes();
-      setVista('lista');
+      
     } catch(e) { setMsgErr('Error al aprobar: '+e.message); }
     finally { setAprobando(false); setSolicDetalle(null); }
   };
@@ -344,7 +344,7 @@ export default function NuevaSolicitud() {
       setModalRechaz(false); setMotivoRech('');
       setTimeout(()=>setMsgOk(''),5000);
       fetchSolicitudes();
-      setVista('lista');
+      
     } catch(e) { setMsgErr('Error: '+e.message); }
     finally { setAprobando(false); setSolicDetalle(null); }
   };
@@ -356,384 +356,12 @@ export default function NuevaSolicitud() {
     setIngresoM('0'); setOtrosIng('0'); setGastos({alimento:'',luz:'',telefono:'',transporte:'',renta:'',inversion:'',creditos:'',otros:''});
   };
 
-  const cancelar = () => { resetForm(); setVista('lista'); };
+  const cancelar = () => { resetForm();  };
 
-  // ════════════ VISTA LISTA DE SOLICITUDES ════════════
-  if (vista === 'lista') return (
-    <div style={{maxWidth:'960px',margin:'0 auto',fontFamily:'DM Sans,sans-serif'}}>
-      <Msg tipo="ok"  msg={msgOk}/>
-      <Msg tipo="err" msg={msgErr}/>
 
-      {/* Header */}
-      <div style={{...S.card,marginBottom:'16px'}}>
-        <div style={{padding:'16px 20px',background:'#f4f8fd',borderBottomWidth:'1px',borderBottomStyle:'solid',borderBottomColor:'#dceaf8',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'10px'}}>
-          <div>
-            <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'22px',fontWeight:'700',color:'#0a2d5e',margin:0}}>Solicitudes de crédito</h2>
-            <div style={{fontSize:'12px',color:'#90aac8',marginTop:'2px'}}>{solicitudes.length} registro(s)</div>
-          </div>
-          <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
-            <button onClick={fetchSolicitudes} style={{...S.btnAzul,display:'flex',alignItems:'center',gap:'5px'}}>
-              <RefreshCw size={13}/> Actualizar
-            </button>
-            <button onClick={()=>{resetForm();setVista('nueva');setPaso(1);}}
-              style={{...S.btnVerde,width:'auto',padding:'8px 20px',fontSize:'13px',display:'flex',alignItems:'center',gap:'6px'}}>
-              <Plus size={14}/> Nueva solicitud
-            </button>
-          </div>
-        </div>
+  const cancelar = () => { resetForm(); };
 
-        {/* Filtros */}
-        <div style={{padding:'12px 20px',display:'flex',gap:'10px',flexWrap:'wrap',alignItems:'center',borderBottomWidth:'1px',borderBottomStyle:'solid',borderBottomColor:'#f0f4f8'}}>
-          <div style={{display:'flex',gap:'6px',alignItems:'center',flex:1,minWidth:'200px'}}>
-            <input value={filtroBusc} onChange={e=>setFiltroBusc(e.target.value)}
-              onKeyDown={e=>e.key==='Enter'&&fetchSolicitudes()}
-              placeholder="Buscar por cliente, CURP..." style={{...S.input,width:'100%'}}/>
-            <button onClick={fetchSolicitudes} style={{...S.btnAzul,padding:'7px 12px',display:'flex',alignItems:'center'}}>
-              <Search size={13}/>
-            </button>
-          </div>
-          <Sel val={filtroEst} onChange={setFiltroEst} opts={['Pendiente','En revisión','Aprobada','Rechazada','Cancelada']} w="140px" ph="Todos los estatus"/>
-        </div>
-
-        {/* Tabla */}
-        <div style={{overflowX:'auto'}}>
-          {cargSol
-            ? <div style={{padding:'30px',textAlign:'center'}}><Loader size={20} color="#0e50a0" style={{animation:'spin 1s linear infinite'}}/></div>
-            : solicitudes.length === 0
-              ? <div style={{padding:'30px',textAlign:'center',color:'#90aac8',fontSize:'13px'}}>No hay solicitudes registradas</div>
-              : (
-                <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12.5px'}}>
-                  <thead>
-                    <tr style={{background:'#0d1f5c'}}>
-                      {['Folio','Cliente','Producto','Monto','Plazo','Frecuencia','Estatus','Fecha','Acciones'].map(h=>(
-                        <th key={h} style={{padding:'9px 12px',color:'#b8cde8',fontWeight:'700',fontSize:'11px',textAlign:'left',textTransform:'uppercase',letterSpacing:'0.05em',whiteSpace:'nowrap'}}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {solicitudes.map((s,i)=>(
-                      <tr key={s._id} style={{background:i%2===0?'#fff':'#f8fbff',borderBottomWidth:'1px',borderBottomStyle:'solid',borderBottomColor:'#eef2f7'}}>
-                        <td style={{padding:'8px 12px',fontFamily:'monospace',fontSize:'11px',color:'#0e50a0',fontWeight:'700'}}>{s._id?.slice(-8).toUpperCase()}</td>
-                        <td style={{padding:'8px 12px',fontWeight:'600',textTransform:'uppercase',maxWidth:'160px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                          {s.tipo==='GRUPAL' ? `👥 ${s.nombreGrupo||'Grupo'}` : (s.clienteNombre||'—')}
-                        </td>
-                        <td style={{padding:'8px 12px',color:'#555'}}>{s.producto||'—'}</td>
-                        <td style={{padding:'8px 12px',fontWeight:'700',color:'#0d1f5c'}}>{fmt(s.monto)}</td>
-                        <td style={{padding:'8px 12px',textAlign:'center'}}>{s.plazo||'—'}</td>
-                        <td style={{padding:'8px 12px',color:'#555'}}>{s.frecuencia||'—'}</td>
-                        <td style={{padding:'8px 12px'}}><Pill v={s.estatus}/></td>
-                        <td style={{padding:'8px 12px',color:'#777',fontSize:'11px'}}>{fmtF(s.fecha||s.createdAt)}</td>
-                        <td style={{padding:'8px 12px'}}>
-                          <div style={{display:'flex',gap:'5px'}}>
-                            <button onClick={()=>{setSolicDetalle(s);setVista('detalle');}}
-                              style={{background:'#e8f2fc',color:'#0e50a0',border:'none',borderRadius:'6px',padding:'5px 9px',cursor:'pointer',fontSize:'11px',fontWeight:'600',display:'flex',alignItems:'center',gap:'3px'}}>
-                              <Eye size={11}/> Ver
-                            </button>
-                            {s.estatus==='Pendiente'&&(
-                              <>
-                                <button onClick={()=>{setSolicDetalle(s);setModalAprob(true);}}
-                                  style={{background:'#dcfce7',color:'#166534',border:'none',borderRadius:'6px',padding:'5px 9px',cursor:'pointer',fontSize:'11px',fontWeight:'600',display:'flex',alignItems:'center',gap:'3px'}}>
-                                  <CheckSquare size={11}/> Aprobar
-                                </button>
-                                <button onClick={()=>{setSolicDetalle(s);setModalRechaz(true);}}
-                                  style={{background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:'6px',padding:'5px 9px',cursor:'pointer',fontSize:'11px',fontWeight:'600',display:'flex',alignItems:'center',gap:'3px'}}>
-                                  <XSquare size={11}/> Rechazar
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )
-          }
-        </div>
-      </div>
-
-      {/* ═══ MODAL APROBAR ═══ */}
-      {modalAprob && solicDetalle && (
-        <div style={{position:'fixed',inset:0,background:'rgba(5,15,40,0.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000,padding:'20px'}}>
-          <div style={{background:'#fff',borderRadius:'16px',width:'100%',maxWidth:'440px',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}}>
-            <div style={{background:'#166534',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span style={{color:'#fff',fontWeight:'700',fontSize:'16px',fontFamily:"'Cormorant Garamond',serif"}}>Aprobar solicitud</span>
-              <button onClick={()=>setModalAprob(false)} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><X size={16}/></button>
-            </div>
-            <div style={{padding:'20px'}}>
-              <div style={{background:'#f0fdf4',borderRadius:'10px',padding:'12px',marginBottom:'16px',borderWidth:'1px',borderStyle:'solid',borderColor:'#86efac'}}>
-                <div style={{fontWeight:'700',color:'#166534',marginBottom:'4px'}}>{solicDetalle.clienteNombre||solicDetalle.nombreGrupo}</div>
-                <div style={{fontSize:'12px',color:'#555'}}>
-                  <span style={{marginRight:'12px'}}><b>Producto:</b> {solicDetalle.producto}</span>
-                  <span><b>Monto:</b> {fmt(solicDetalle.monto)}</span>
-                </div>
-              </div>
-              <Msg tipo="err" msg={msgErr}/>
-              <div style={{marginBottom:'14px'}}>
-                <div style={{...S.lbl,display:'block',marginBottom:'5px'}}>Fecha de inicio del crédito *</div>
-                <input type="date" value={fechaInicio} onChange={e=>setFechaInicio(e.target.value)}
-                  style={{...S.input,width:'100%'}}/>
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
-                <button onClick={aprobarSolicitud} disabled={aprobando}
-                  style={{background:'#22c55e',color:'#fff',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'700',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
-                  {aprobando?<Loader size={13} style={{animation:'spin 1s linear infinite'}}/>:<CheckCircle size={13}/>}
-                  Confirmar y crear crédito
-                </button>
-                <button onClick={()=>{setModalAprob(false);setFechaInicio('');}}
-                  style={{background:'#f1f5f9',color:'#475569',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}>
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ MODAL RECHAZAR ═══ */}
-      {modalRechaz && solicDetalle && (
-        <div style={{position:'fixed',inset:0,background:'rgba(5,15,40,0.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000,padding:'20px'}}>
-          <div style={{background:'#fff',borderRadius:'16px',width:'100%',maxWidth:'420px',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}}>
-            <div style={{background:'#dc2626',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span style={{color:'#fff',fontWeight:'700',fontSize:'16px',fontFamily:"'Cormorant Garamond',serif"}}>Rechazar solicitud</span>
-              <button onClick={()=>setModalRechaz(false)} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><X size={16}/></button>
-            </div>
-            <div style={{padding:'20px'}}>
-              <div style={{marginBottom:'14px'}}>
-                <div style={{...S.lbl,display:'block',marginBottom:'5px'}}>Motivo del rechazo</div>
-                <textarea value={motivoRech} onChange={e=>setMotivoRech(e.target.value)}
-                  rows={3} placeholder="Describe el motivo..." style={{...S.input,width:'100%',resize:'vertical'}}/>
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
-                <button onClick={rechazarSolicitud} disabled={aprobando}
-                  style={{background:'#dc2626',color:'#fff',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>
-                  {aprobando?'Procesando...':'Confirmar rechazo'}
-                </button>
-                <button onClick={()=>{setModalRechaz(false);setMotivoRech('');}}
-                  style={{background:'#f1f5f9',color:'#475569',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}>
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
-    </div>
-  );
-
-  // ════════════ VISTA DETALLE SOLICITUD ════════════
-  if (vista === 'detalle' && solicDetalle) {
-    const s = solicDetalle;
-    return (
-      <div style={{maxWidth:'800px',margin:'0 auto',fontFamily:'DM Sans,sans-serif'}}>
-        <Msg tipo="ok"  msg={msgOk}/>
-        <Msg tipo="err" msg={msgErr}/>
-
-        <div style={S.card}>
-          <div style={{...S.head,justifyContent:'space-between'}}>
-            <span style={{display:'flex',alignItems:'center',gap:'8px'}}><FileText size={18}/> Detalle de solicitud</span>
-            <div style={{display:'flex',gap:'8px'}}>
-              {s.estatus==='Pendiente'&&(
-                <>
-                  <button onClick={()=>setModalAprob(true)}
-                    style={{background:'#22c55e',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 14px',fontSize:'12px',fontWeight:'700',cursor:'pointer',display:'flex',alignItems:'center',gap:'5px'}}>
-                    <CheckCircle size={12}/> Aprobar
-                  </button>
-                  <button onClick={()=>setModalRechaz(true)}
-                    style={{background:'#dc2626',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 14px',fontSize:'12px',fontWeight:'700',cursor:'pointer',display:'flex',alignItems:'center',gap:'5px'}}>
-                    <XSquare size={12}/> Rechazar
-                  </button>
-                </>
-              )}
-              <button onClick={()=>setVista('lista')}
-                style={{background:'#f1f5f9',color:'#475569',border:'none',borderRadius:'8px',padding:'7px 14px',fontSize:'12px',fontWeight:'600',cursor:'pointer'}}>
-                ← Regresar
-              </button>
-            </div>
-          </div>
-          <div style={S.body}>
-            {/* Resumen */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:'10px',marginBottom:'16px'}}>
-              {[
-                ['Folio',     s._id?.slice(-8).toUpperCase()],
-                ['Estatus',   null],
-                ['Fecha',     fmtF(s.fecha||s.createdAt)],
-                ['Tipo',      s.tipo||'PERSONAL'],
-                ['Producto',  s.producto],
-                ['Monto',     fmt(s.monto)],
-                ['Plazo',     `${s.plazo} ${s.frecuencia||''}`],
-                ['Tasa interés',`${s.tasaInteres||0}%`],
-              ].map(([l,v])=>(
-                <div key={l} style={{background:'#f4f8fd',borderRadius:'10px',padding:'10px 12px',borderWidth:'1px',borderStyle:'solid',borderColor:'#dceaf8'}}>
-                  <div style={{...S.lbl,display:'block',marginBottom:'3px'}}>{l}</div>
-                  <div style={{fontWeight:'700',fontSize:'13px',color:'#0a2d5e'}}>
-                    {l==='Estatus' ? <Pill v={s.estatus}/> : (v||'—')}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Cliente / Grupo */}
-            {s.tipo==='GRUPAL' ? (
-              <div style={{marginBottom:'12px'}}>
-                <div style={S.subHead}>Miembros del grupo — {s.nombreGrupo}</div>
-                <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
-                  <thead><tr style={{background:'#0d1f5c'}}>
-                    {['#','Nombre','CURP','Monto individual'].map(h=>(
-                      <th key={h} style={{padding:'6px 10px',color:'#b8cde8',textAlign:'left',fontSize:'11px'}}>{h}</th>
-                    ))}
-                  </tr></thead>
-                  <tbody>{(s.miembros||[]).map((m,i)=>(
-                    <tr key={i} style={{background:i%2===0?'#fff':'#f8f8f8'}}>
-                      <td style={{padding:'6px 10px',fontWeight:'700',color:'#0e50a0'}}>{i+1}</td>
-                      <td style={{padding:'6px 10px',textTransform:'uppercase',fontWeight:'600'}}>{m.nombre}</td>
-                      <td style={{padding:'6px 10px',fontFamily:'monospace'}}>{m.curp||'—'}</td>
-                      <td style={{padding:'6px 10px',fontWeight:'700'}}>{fmt(m.montoIndividual)}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            ) : (
-              <div style={{marginBottom:'12px'}}>
-                <div style={S.subHead}>Datos del cliente</div>
-                <div style={{display:'flex',gap:'16px',flexWrap:'wrap'}}>
-                  <div><Lbl>Nombre:</Lbl><span style={{fontWeight:'600',textTransform:'uppercase'}}>{s.clienteNombre||'—'}</span></div>
-                  <div><Lbl>CURP:</Lbl><span style={{fontFamily:'monospace'}}>{s.clienteCurp||'—'}</span></div>
-                  <div><Lbl>Ruta:</Lbl><span>{s.rutaVinculacion||'—'}</span></div>
-                </div>
-              </div>
-            )}
-
-            {/* Avales */}
-            {(s.avales||[]).length>0 && (
-              <div style={{marginBottom:'12px'}}>
-                <div style={S.subHead}>Avales</div>
-                {s.avales.map((av,i)=>(
-                  <div key={i} style={{display:'flex',gap:'12px',fontSize:'12px',marginBottom:'4px',flexWrap:'wrap'}}>
-                    <span><b>Nombre:</b> {av.nombre||'—'}</span>
-                    <span><b>CURP:</b> {av.curp||'—'}</span>
-                    <span><b>Tel:</b> {av.telefono||'—'}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Financiero */}
-            <div style={S.subHead}>Información financiera</div>
-            <div style={{display:'flex',gap:'14px',flexWrap:'wrap',marginBottom:'12px',fontSize:'12px'}}>
-              <span><b>Ingreso mensual:</b> {fmt(s.ingresoMensual)}</span>
-              <span><b>Otros ingresos:</b> {fmt(s.otrosIngresos)}</span>
-              <span><b>Total gastos:</b> {fmt(Object.values(s.gastos||{}).reduce((a,v)=>a+(parseFloat(v)||0),0))}</span>
-              <span><b>Destino:</b> {s.destino||'—'}</span>
-            </div>
-
-            {/* Tabla de pagos si existe */}
-            {(s.tablaPagos||[]).length>0 && (
-              <>
-                <div style={S.subHead}>Tabla de pagos simulada</div>
-                <div style={{overflowX:'auto',maxHeight:'220px',overflowY:'auto'}}>
-                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:'11.5px'}}>
-                    <thead style={{position:'sticky',top:0}}>
-                      <tr style={{background:'#0d1f5c'}}>
-                        {['#','Fecha','Capital pend.','Abono cap.','Interés','IVA','Pago total','Saldo'].map(h=>(
-                          <th key={h} style={{padding:'6px 8px',color:'#b8cde8',fontSize:'10px',fontWeight:'700',textAlign:'right',whiteSpace:'nowrap'}}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {s.tablaPagos.map((f,i)=>(
-                        <tr key={i} style={{background:i%2===0?'#fff':'#f8fbff'}}>
-                          <td style={{padding:'5px 8px',textAlign:'right',color:'#0e50a0',fontWeight:'700'}}>{f.periodo}</td>
-                          <td style={{padding:'5px 8px',textAlign:'right',fontFamily:'monospace',fontSize:'10px'}}>{f.fecha}</td>
-                          <td style={{padding:'5px 8px',textAlign:'right'}}>{fmt(f.capitalPendiente)}</td>
-                          <td style={{padding:'5px 8px',textAlign:'right',color:'#166534',fontWeight:'600'}}>{fmt(f.abonoCapital)}</td>
-                          <td style={{padding:'5px 8px',textAlign:'right',color:'#dc2626'}}>{fmt(f.interes)}</td>
-                          <td style={{padding:'5px 8px',textAlign:'right'}}>{fmt(f.iva)}</td>
-                          <td style={{padding:'5px 8px',textAlign:'right',fontWeight:'700'}}>{fmt(f.pagoTotal)}</td>
-                          <td style={{padding:'5px 8px',textAlign:'right'}}>{fmt(f.saldoFinal)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-
-            {/* Rechazo info */}
-            {s.motivoRechazo && (
-              <div style={{background:'#fee2e2',borderRadius:'10px',padding:'10px 14px',marginTop:'12px',borderWidth:'1px',borderStyle:'solid',borderColor:'#fca5a5'}}>
-                <div style={{fontWeight:'700',color:'#dc2626',marginBottom:'3px'}}>Motivo de rechazo</div>
-                <div style={{fontSize:'13px',color:'#991b1b'}}>{s.motivoRechazo}</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Modales desde detalle */}
-        {modalAprob && (
-          <div style={{position:'fixed',inset:0,background:'rgba(5,15,40,0.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000,padding:'20px'}}>
-            <div style={{background:'#fff',borderRadius:'16px',width:'100%',maxWidth:'440px',overflow:'hidden'}}>
-              <div style={{background:'#166534',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                <span style={{color:'#fff',fontWeight:'700',fontSize:'16px',fontFamily:"'Cormorant Garamond',serif"}}>Aprobar solicitud</span>
-                <button onClick={()=>setModalAprob(false)} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><X size={16}/></button>
-              </div>
-              <div style={{padding:'20px'}}>
-                <Msg tipo="err" msg={msgErr}/>
-                <div style={{marginBottom:'14px'}}>
-                  <div style={{...S.lbl,display:'block',marginBottom:'5px'}}>Fecha de inicio del crédito *</div>
-                  <input type="date" value={fechaInicio} onChange={e=>setFechaInicio(e.target.value)} style={{...S.input,width:'100%'}}/>
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
-                  <button onClick={aprobarSolicitud} disabled={aprobando}
-                    style={{background:'#22c55e',color:'#fff',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'700',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
-                    {aprobando?<Loader size={13} style={{animation:'spin 1s linear infinite'}}/>:<CheckCircle size={13}/>}
-                    Confirmar
-                  </button>
-                  <button onClick={()=>{setModalAprob(false);setFechaInicio('');}}
-                    style={{background:'#f1f5f9',color:'#475569',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}>
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        {modalRechaz && (
-          <div style={{position:'fixed',inset:0,background:'rgba(5,15,40,0.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000,padding:'20px'}}>
-            <div style={{background:'#fff',borderRadius:'16px',width:'100%',maxWidth:'420px',overflow:'hidden'}}>
-              <div style={{background:'#dc2626',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                <span style={{color:'#fff',fontWeight:'700',fontSize:'16px',fontFamily:"'Cormorant Garamond',serif"}}>Rechazar solicitud</span>
-                <button onClick={()=>setModalRechaz(false)} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><X size={16}/></button>
-              </div>
-              <div style={{padding:'20px'}}>
-                <div style={{marginBottom:'14px'}}>
-                  <div style={{...S.lbl,display:'block',marginBottom:'5px'}}>Motivo del rechazo</div>
-                  <textarea value={motivoRech} onChange={e=>setMotivoRech(e.target.value)}
-                    rows={3} placeholder="Describe el motivo..." style={{...S.input,width:'100%',resize:'vertical'}}/>
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
-                  <button onClick={rechazarSolicitud} disabled={aprobando}
-                    style={{background:'#dc2626',color:'#fff',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>
-                    {aprobando?'Procesando...':'Confirmar'}
-                  </button>
-                  <button onClick={()=>{setModalRechaz(false);setMotivoRech('');}}
-                    style={{background:'#f1f5f9',color:'#475569',border:'none',borderRadius:'10px',padding:'11px',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}>
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
-      </div>
-    );
-  }
-
-  // ════════════ VISTA NUEVA SOLICITUD (PASO 1) ════════════
-  if (vista === 'nueva' && paso === 1) return (
+  if (paso === 1) return (
     <div style={{maxWidth:'800px',margin:'0 auto',fontFamily:'DM Sans,sans-serif'}}>
       <Msg tipo="err" msg={msgErr}/>
       <div style={S.card}>
