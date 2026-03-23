@@ -106,7 +106,7 @@ export default function LoginPage() {
         success = false;
       } else {
         // Backend error — fallback a credenciales locales para no bloquear en desarrollo
-        success = form.usuario === "admin" && form.password === "Admin1234!";
+        success = form.usuario === "admin" && form.password === "Temporal2026.";
       }
 
       setIsLoading(false);
@@ -126,7 +126,7 @@ export default function LoginPage() {
     } catch {
       // Error de red — usar fallback local
       setIsLoading(false);
-      const success = form.usuario === "admin" && form.password === "Admin1234!";
+      const success = form.usuario === "admin" && form.password === "Temporal2026.";
       if (!success) {
         const n = attempts + 1;
         setAttempts(n);
