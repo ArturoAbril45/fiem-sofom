@@ -137,7 +137,7 @@ export default function Dashboard() {
   const saveProfile  = () => { setProfile({ ...form }); setSaved(true); setTimeout(() => { setShowModal(false); setSaved(false); }, 1200); };
   const handleLogout = () => { setShowDropdown(false); setLoggingOut(true); setTimeout(() => router.push("/login"), 3000); };
   const toggle       = (i) => setOpenMenus(p => ({ ...p, [i]: !p[i] }));
-  const handleNav    = (i) => { if (NAV[i].sub.length > 0) toggle(i); else { setActiveNav(i); setActiveSub(null); } };
+  const handleNav    = (i) => { if (NAV[i].sub.length > 0) { if (collapsed) setCollapsed(false); toggle(i); } else { setActiveNav(i); setActiveSub(null); } };
   const handleSub    = (i, s) => { setActiveNav(i); setActiveSub(s); };
   const navTo        = (s) => { const idx = NAV.findIndex(n => n.sub.includes(s)); if (idx >= 0) { setActiveNav(idx); setActiveSub(s); } };
 
