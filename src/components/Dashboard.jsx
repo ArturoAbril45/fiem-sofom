@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://fiem-backend-production.up.railway.app';
 import { useRouter } from "next/navigation";
 import {
   Home, FileText, Users, CreditCard, PiggyBank,
