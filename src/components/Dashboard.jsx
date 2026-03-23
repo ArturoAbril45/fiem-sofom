@@ -138,7 +138,7 @@ export default function Dashboard() {
 
   const openModal    = () => { setForm({ ...profile }); setShowDropdown(false); setShowModal(true); setSaved(false); };
   const saveProfile  = () => { setProfile({ ...form }); setSaved(true); setTimeout(() => { setShowModal(false); setSaved(false); }, 1200); };
-  const handleLogout = () => { setShowDropdown(false); setLoggingOut(true); setTimeout(() => router.push("/login"), 3000); };
+  const handleLogout = () => { setShowDropdown(false); setLoggingOut(true); sessionStorage.removeItem('fiem_login_notif_done'); setTimeout(() => router.push("/login"), 3000); };
   const toggle       = (i) => setOpenMenus(p => ({ ...p, [i]: !p[i] }));
   const handleNav    = (i) => { if (NAV[i].sub.length > 0) toggle(i); else { setActiveNav(i); setActiveSub(null); } };
   const handleSub    = (i, s) => { setActiveNav(i); setActiveSub(s); };
