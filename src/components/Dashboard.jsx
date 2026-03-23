@@ -85,6 +85,7 @@ export default function Dashboard() {
   const [loggingOut,    setLoggingOut]    = useState(false);
   const [collapsed,     setCollapsed]     = useState(false);
   const [showBell,      setShowBell]      = useState(false);
+  const [bellExpanded,  setBellExpanded]  = useState(false);
   const [flyout,        setFlyout]        = useState(null); // { index, y }
   const flyoutTimer = useRef(null);
   const [notifs,        setNotifs]        = useState([]);
@@ -549,18 +550,20 @@ export default function Dashboard() {
                 </button>
                 {showBell && (
                   <>
-                    <div style={{ position:'fixed', inset:0, zIndex:199 }} onClick={() => setShowBell(false)} />
+                    <div style={{ position:'fixed', inset:0, zIndex:199 }} onClick={() => { setShowBell(false); setBellExpanded(false); }} />
                     <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:'320px', background:'#fff', borderRadius:'16px', boxShadow:'0 16px 48px rgba(14,80,160,0.14)', border:'1px solid #dceaf8', zIndex:200, overflow:'hidden' }}>
                       <div style={{ padding:'16px 18px 12px', borderBottom:'1px solid #dceaf8', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                        <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'17px', fontWeight:'700', color:'#0a2d5e' }}>Notificaciones</span>
-                        {noLeidas > 0 && <button onClick={marcarLeidas} style={{ background:'none', border:'none', fontSize:'12px', color:'#0e50a0', fontWeight:'600', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>Marcar todas como leídas</button>}
+                        <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'17px', fontWeight:'700', color:'#0a2d5e' }}>
+                          Notificaciones {notifs.length > 0 && <span style={{ fontSize:'13px', color:'#90aac8', fontFamily:'DM Sans,sans-serif', fontWeight:'400' }}>({notifs.length})</span>}
+                        </span>
+                        {noLeidas > 0 && <button onClick={marcarLeidas} style={{ background:'none', border:'none', fontSize:'12px', color:'#0e50a0', fontWeight:'600', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>Marcar leídas</button>}
                       </div>
-                      <div style={{ maxHeight:'340px', overflowY:'auto' }}>
+                      <div style={{ maxHeight: bellExpanded ? '480px' : '260px', overflowY:'auto', transition:'max-height .3s ease' }}>
                         {notifs.length === 0 && (
                           <div style={{ padding:'40px', textAlign:'center', color:'#90aac8', fontSize:'13px' }}>Sin notificaciones</div>
                         )}
-                        {notifs.map(n => (
-                          <div key={n.id} style={{ display:'flex', alignItems:'flex-start', gap:'10px', padding:'12px 18px', background: n.leida ? '#fff' : '#f0f7ff', borderBottom:'1px solid #f0f6ff', transition:'background .15s' }}>
+                        {(bellExpanded ? notifs : notifs.slice(0, 4)).map(n => (
+                          <div key={n._id} style={{ display:'flex', alignItems:'flex-start', gap:'10px', padding:'12px 18px', background: n.leida ? '#fff' : '#f0f7ff', borderBottom:'1px solid #f0f6ff' }}>
                             <div style={{ width:'8px', height:'8px', borderRadius:'50%', background: n.leida ? 'transparent' : '#0e50a0', marginTop:'5px', flexShrink:0 }} />
                             <div style={{ flex:1 }}>
                               <div style={{ fontSize:'13px', fontWeight:'600', color:'#0a2d5e', marginBottom:'2px' }}>{n.titulo}</div>
@@ -570,6 +573,11 @@ export default function Dashboard() {
                           </div>
                         ))}
                       </div>
+                      {notifs.length > 4 && (
+                        <button onClick={() => setBellExpanded(p => !p)} style={{ width:'100%', border:'none', borderTop:'1px solid #dceaf8', background:'#f4f8fd', padding:'10px', fontSize:'12px', fontWeight:'600', color:'#0e50a0', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
+                          {bellExpanded ? 'Ver menos ↑' : `Ver ${notifs.length - 4} más ↓`}
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
