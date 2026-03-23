@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://fiem-backend-production.up.railway.app';
 import { useRouter } from "next/navigation";
@@ -85,6 +85,8 @@ export default function Dashboard() {
   const [loggingOut,    setLoggingOut]    = useState(false);
   const [collapsed,     setCollapsed]     = useState(false);
   const [showBell,      setShowBell]      = useState(false);
+  const [flyout,        setFlyout]        = useState(null); // { index, y }
+  const flyoutTimer = useRef(null);
   const [notifs,        setNotifs]        = useState([]);
 
   const [profile, setProfile] = useState({ nombre: "Administrador", correo: "admin@fiem.com.mx", celular: "+52 55 1234 5678", nacimiento: "1985-06-15" });
@@ -137,7 +139,7 @@ export default function Dashboard() {
   const saveProfile  = () => { setProfile({ ...form }); setSaved(true); setTimeout(() => { setShowModal(false); setSaved(false); }, 1200); };
   const handleLogout = () => { setShowDropdown(false); setLoggingOut(true); setTimeout(() => router.push("/login"), 3000); };
   const toggle       = (i) => setOpenMenus(p => ({ ...p, [i]: !p[i] }));
-  const handleNav    = (i) => { if (NAV[i].sub.length > 0) { if (collapsed) setCollapsed(false); toggle(i); } else { setActiveNav(i); setActiveSub(null); } };
+  const handleNav    = (i) => { if (NAV[i].sub.length > 0) toggle(i); else { setActiveNav(i); setActiveSub(null); } };
   const handleSub    = (i, s) => { setActiveNav(i); setActiveSub(s); };
   const navTo        = (s) => { const idx = NAV.findIndex(n => n.sub.includes(s)); if (idx >= 0) { setActiveNav(idx); setActiveSub(s); } };
 
@@ -476,6 +478,8 @@ export default function Dashboard() {
                   className={`ni${openMenus[i] ? " is-open" : ""}${activeNav === i && !activeSub && item.sub.length === 0 ? " is-active" : ""}`}
                   onClick={() => handleNav(i)}
                   title={collapsed ? item.label : ""}
+                  onMouseEnter={e => { if (collapsed && item.sub.length > 0) { clearTimeout(flyoutTimer.current); setFlyout({ index: i, y: e.currentTarget.getBoundingClientRect().top }); } }}
+                  onMouseLeave={() => { if (collapsed) flyoutTimer.current = setTimeout(() => setFlyout(null), 120); }}
                 >
                   <span className="ni-icon"><item.icon size={16} /></span>
                   <span className="ni-lbl">{item.label}</span>
@@ -499,6 +503,28 @@ export default function Dashboard() {
             ))}
           </nav>
 
+          {/* Flyout submenú colapsado */}
+          {collapsed && flyout && NAV[flyout.index] && (
+            <div
+              onMouseEnter={() => clearTimeout(flyoutTimer.current)}
+              onMouseLeave={() => { flyoutTimer.current = setTimeout(() => setFlyout(null), 120); }}
+              style={{ position:'fixed', left:'68px', top: flyout.y, zIndex:200, background:'#fff', borderRadius:'12px', boxShadow:'0 8px 32px rgba(14,80,160,0.15)', border:'1px solid #dceaf8', minWidth:'190px', overflow:'hidden', animation:'ddIn .15s cubic-bezier(.22,1,.36,1)' }}
+            >
+              <div style={{ padding:'10px 14px 8px', borderBottom:'1px solid #f0f6ff' }}>
+                <span style={{ fontSize:'11px', fontWeight:'700', color:'#90aac8', textTransform:'uppercase', letterSpacing:'.08em' }}>{NAV[flyout.index].label}</span>
+              </div>
+              {NAV[flyout.index].sub.map((s, j) => (
+                <button key={j}
+                  onClick={() => { handleSub(flyout.index, s); setFlyout(null); }}
+                  style={{ display:'block', width:'100%', border:'none', background:'none', textAlign:'left', padding:'9px 16px', fontSize:'13px', fontFamily:'DM Sans,sans-serif', color: activeSub === s ? '#0e50a0' : '#1a3d6e', fontWeight: activeSub === s ? '600' : '400', cursor:'pointer', transition:'background .12s' }}
+                  onMouseEnter={e => e.currentTarget.style.background='#e8f2fc'}
+                  onMouseLeave={e => e.currentTarget.style.background='none'}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
         </aside>
 
         {/* ── BODY ── */}
