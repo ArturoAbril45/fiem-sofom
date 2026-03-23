@@ -164,7 +164,7 @@ function DomicilioBlock({ form, ch, errors={}, prefijo='' }) {
         <input value={form[f('referenciaAdicional')]||''} onChange={e=>ch(f('referenciaAdicional'),e.target.value)} style={inp(false)} placeholder="Descripción para localizar el domicilio" />
       </Campo>
       {/* Mapa placeholder */}
-      <div style={{ borderRadius:'12px', border:'1px solid #dceaf8', height:'180px', background:'linear-gradient(135deg,#e8f2fc 0%,#f0f7ff 100%)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px', color:'#90aac8' }}>
+      <div style={{ borderRadius:'12px', border:'1px solid #dceaf8', height:'180px', background:'#f4f8fd', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px', color:'#90aac8' }}>
         <MapPin size={28} color="#0e50a0" strokeWidth={1.5} />
         <span style={{ fontSize:'13px', fontWeight:'600', color:'#4a6a94' }}>Arrastra el marcador para ubicar el domicilio</span>
         <span style={{ fontSize:'11px' }}>Mapa de Google Maps</span>

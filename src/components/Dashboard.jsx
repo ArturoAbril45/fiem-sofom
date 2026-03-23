@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Home, FileText, Users, CreditCard, PiggyBank,
@@ -82,11 +82,54 @@ export default function Dashboard() {
   const [saved,         setSaved]         = useState(false);
   const [loggingOut,    setLoggingOut]    = useState(false);
   const [collapsed,     setCollapsed]     = useState(false);
+  const [showBell,      setShowBell]      = useState(false);
+  const [notifs,        setNotifs]        = useState([]);
 
   const [profile, setProfile] = useState({ nombre: "Administrador", correo: "admin@fiem.com.mx", celular: "+52 55 1234 5678", nacimiento: "1985-06-15" });
   const [form,    setForm]    = useState({ ...profile });
 
   const router = useRouter();
+  const USUARIO = 'admin';
+
+  // Cargar notificaciones del backend
+  useEffect(() => {
+    fetch(`${API}/api/notificaciones/${USUARIO}`)
+      .then(r => r.json())
+      .then(data => setNotifs(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  // Registrar notificación de inicio de sesión al montar
+  useEffect(() => {
+    const key = 'fiem_login_notif_done';
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    fetch(`${API}/api/notificaciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usuario: USUARIO,
+        tipo: 'login',
+        titulo: 'Inicio de sesión',
+        mensaje: `Acceso registrado el ${new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' })} a las ${new Date().toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' })}`,
+      }),
+    })
+      .then(r => r.json())
+      .then(nueva => setNotifs(prev => [nueva, ...prev]))
+      .catch(() => {});
+  }, []);
+
+  const marcarLeidas = () => {
+    fetch(`${API}/api/notificaciones/leer-todas/${USUARIO}`, { method: 'PUT' }).catch(() => {});
+    setNotifs(prev => prev.map(n => ({ ...n, leida: true })));
+  };
+
+  const eliminarNotif = (id) => {
+    fetch(`${API}/api/notificaciones/${id}`, { method: 'DELETE' }).catch(() => {});
+    setNotifs(prev => prev.filter(n => n._id !== id));
+  };
+
+  const noLeidas = notifs.filter(n => !n.leida).length;
 
   const openModal    = () => { setForm({ ...profile }); setShowDropdown(false); setShowModal(true); setSaved(false); };
   const saveProfile  = () => { setProfile({ ...form }); setSaved(true); setTimeout(() => { setShowModal(false); setSaved(false); }, 1200); };
@@ -239,9 +282,12 @@ export default function Dashboard() {
         }
         .sb-toggle:hover{background:#dceaf8;}
         .fiem-sb.collapsed .sb-toggle{margin-left:0;}
+        .fiem-sb.collapsed .sb-brand{justify-content:center;padding:0;}
+        .fiem-sb.collapsed .sb-brand-texts{flex:0;width:0;overflow:hidden;}
 
         /* nav */
         .sb-nav{flex:1;padding:10px 8px;overflow-y:auto;overflow-x:hidden;}
+        .fiem-sb.collapsed .sb-nav{display:flex;flex-direction:column;justify-content:center;}
         .sb-nav::-webkit-scrollbar{width:3px;}
         .sb-nav::-webkit-scrollbar-thumb{background:#dceaf8;border-radius:2px;}
 
@@ -265,7 +311,8 @@ export default function Dashboard() {
           transition:background .15s,color .15s;
           margin-bottom:2px;
         }
-        .fiem-sb.collapsed .ni{justify-content:center;padding:10px 0;}
+        .fiem-sb.collapsed .sb-nav{padding:10px 0;}
+        .fiem-sb.collapsed .ni{justify-content:center;padding:9px 0;width:48px;margin:1px 10px;gap:0;}
         .ni:hover{background:#e8f2fc;color:#0e50a0;}
         .ni.is-open{background:#e8f2fc;color:#0e50a0;}
         .ni.is-active{background:#0e50a0;color:#fff;box-shadow:0 4px 14px rgba(14,80,160,0.28);}
@@ -304,7 +351,7 @@ export default function Dashboard() {
           padding:12px 14px;
           border-top:1px solid #dceaf8;
           background:#f4f8fd;
-          display:flex;align-items:center;gap:10px;
+          display:flex;align-items:center;gap:0;
           overflow:hidden;
         }
         .fiem-sb.collapsed .sb-user{justify-content:center;padding:12px 0;}
@@ -450,14 +497,6 @@ export default function Dashboard() {
             ))}
           </nav>
 
-          {/* User */}
-          <div className="sb-user">
-            <div className="u-av">{profile.nombre.charAt(0).toUpperCase()}</div>
-            <div className="u-info">
-              <div className="u-nm">{profile.nombre}</div>
-              <div className="u-rl">Administrador</div>
-            </div>
-          </div>
         </aside>
 
         {/* ── BODY ── */}
@@ -475,7 +514,38 @@ export default function Dashboard() {
                 <Search size={14} className="sr-i" />
                 <input type="text" placeholder="Buscar..." className="sr-inp" />
               </div>
-              <button className="ib"><Bell size={16} /><span className="n-dot" /></button>
+              <div style={{ position:'relative' }}>
+                <button className="ib" onClick={() => { setShowBell(p => !p); setShowDropdown(false); }}>
+                  <Bell size={16} />
+                  {noLeidas > 0 && <span className="n-dot" />}
+                </button>
+                {showBell && (
+                  <>
+                    <div style={{ position:'fixed', inset:0, zIndex:199 }} onClick={() => setShowBell(false)} />
+                    <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:'320px', background:'#fff', borderRadius:'16px', boxShadow:'0 16px 48px rgba(14,80,160,0.14)', border:'1px solid #dceaf8', zIndex:200, overflow:'hidden' }}>
+                      <div style={{ padding:'16px 18px 12px', borderBottom:'1px solid #dceaf8', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                        <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'17px', fontWeight:'700', color:'#0a2d5e' }}>Notificaciones</span>
+                        {noLeidas > 0 && <button onClick={marcarLeidas} style={{ background:'none', border:'none', fontSize:'12px', color:'#0e50a0', fontWeight:'600', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>Marcar todas como leídas</button>}
+                      </div>
+                      <div style={{ maxHeight:'340px', overflowY:'auto' }}>
+                        {notifs.length === 0 && (
+                          <div style={{ padding:'40px', textAlign:'center', color:'#90aac8', fontSize:'13px' }}>Sin notificaciones</div>
+                        )}
+                        {notifs.map(n => (
+                          <div key={n.id} style={{ display:'flex', alignItems:'flex-start', gap:'10px', padding:'12px 18px', background: n.leida ? '#fff' : '#f0f7ff', borderBottom:'1px solid #f0f6ff', transition:'background .15s' }}>
+                            <div style={{ width:'8px', height:'8px', borderRadius:'50%', background: n.leida ? 'transparent' : '#0e50a0', marginTop:'5px', flexShrink:0 }} />
+                            <div style={{ flex:1 }}>
+                              <div style={{ fontSize:'13px', fontWeight:'600', color:'#0a2d5e', marginBottom:'2px' }}>{n.titulo}</div>
+                              <div style={{ fontSize:'12px', color:'#4a6a94', lineHeight:1.5 }}>{n.mensaje}</div>
+                            </div>
+                            <button onClick={() => eliminarNotif(n._id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#90aac8', padding:'2px', flexShrink:0 }}><X size={13} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
               <div style={{ position:"relative" }}>
                 <button className="t-av" onClick={() => setShowDropdown(p => !p)}>
                   {profile.nombre.charAt(0).toUpperCase()}

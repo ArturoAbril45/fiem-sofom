@@ -221,13 +221,12 @@ export default function ListaNegra() {
       {/* ══ LISTA ══ */}
       {!selected && (
         <div style={S.card}>
-          {/* Encabezado rojo oscuro */}
-          <div style={{ background:'#991b1b', padding:'26px 28px', textAlign:'center' }}>
+          {/* Encabezado */}
+          <div style={{ background:'#f4f8fd', padding:'26px 28px', textAlign:'center', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#dceaf8' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', marginBottom:'4px' }}>
-              <Slash size={28} color="#fff"/>
-              <h2 style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'28px', fontWeight:'700', color:'#fff', margin:0 }}>Lista negra</h2>
+<h2 style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'28px', fontWeight:'700', color:'#0a2d5e', margin:0 }}>Lista negra</h2>
             </div>
-            <p style={{ fontSize:'13px', color:'rgba(255,255,255,0.75)', margin:0 }}>Clientes bloqueados del sistema</p>
+            <p style={{ fontSize:'13px', color:'#90aac8', margin:0 }}>Clientes bloqueados del sistema</p>
           </div>
 
           {/* Buscador */}

@@ -249,9 +249,9 @@ export default function ConsultarCliente() {
       {!selected && (
         <div style={S.card}>
           {/* Encabezado */}
-          <div style={{ background:'#0d1f5c', padding:'26px 28px', textAlign:'center' }}>
-            <h2 style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'28px', fontWeight:'700', color:'#fff', margin:'0 0 4px' }}>Clientes activos</h2>
-            <p style={{ fontSize:'13px', color:'rgba(255,255,255,0.75)', margin:0 }}>Al tener puesto de Dirección General tienes acceso a toda la información</p>
+          <div style={{ background:'#f4f8fd', padding:'26px 28px', textAlign:'center', borderBottomWidth:'1px', borderBottomStyle:'solid', borderBottomColor:'#dceaf8' }}>
+            <h2 style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'28px', fontWeight:'700', color:'#0a2d5e', margin:'0 0 4px' }}>Clientes activos</h2>
+            <p style={{ fontSize:'13px', color:'#90aac8', margin:0 }}>Al tener puesto de Dirección General tienes acceso a toda la información</p>
           </div>
 
           {/* Buscador */}
