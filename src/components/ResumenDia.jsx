@@ -1,6 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, AlertCircle, CreditCard, PiggyBank, Users, X, BarChart2, Wallet } from 'lucide-react';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://fiem-backend-production.up.railway.app';
 
 function formatMoney(amount) {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(amount);
@@ -37,9 +39,8 @@ function PanelSinModulo({ titulo, descripcion, onClose }) {
 }
 
 export default function ResumenDia({ onNavigate }) {
-  const [panel, setPanel] = useState(null); // { titulo, descripcion }
-
-  const data = {
+  const [panel, setPanel] = useState(null);
+  const [data, setData]   = useState({
     cartera:           { interes: 0, capital: 0, total: 0 },
     cobranza:          { totalPagos: 0, totalMonto: 0, faltanPagos: 0, faltanMonto: 0 },
     pagosVencidos:     { creditosAtraso: 0, pagosVencidos: 0, montoVencido: 0 },
@@ -47,7 +48,22 @@ export default function ResumenDia({ onNavigate }) {
     nuevosCreditos:    { cantidad: 0, capitalPrestado: 0, interesOrdinario: 0 },
     ahorro:            { cuentas: 0, saldoTotal: 0, depositosHoy: 0 },
     clientes:          { total: 0, nuevosHoy: 0 },
-  };
+  });
+
+  useEffect(() => {
+    fetch(`${API}/api/resumen-dia`)
+      .then(r => r.json())
+      .then(d => setData({
+        cartera:          { interes: d.cartera?.interes || 0,                capital: d.cartera?.capital || 0,             total: d.cartera?.total || 0 },
+        cobranza:         { totalPagos: d.cobranza?.totalPagos || 0,         totalMonto: d.cobranza?.totalMonto || 0,      faltanPagos: d.cobranza?.faltanPagos || 0, faltanMonto: d.cobranza?.faltanMonto || 0 },
+        pagosVencidos:    { creditosAtraso: d.creditosVencidos?.total || 0,  pagosVencidos: 0,                             montoVencido: 0 },
+        creditosVigentes: { total: d.creditosVigentes?.total || 0 },
+        nuevosCreditos:   { cantidad: d.nuevosCreditos?.cantidad || 0,       capitalPrestado: d.nuevosCreditos?.capitalPrestado || 0, interesOrdinario: d.nuevosCreditos?.interesOrdinario || 0 },
+        ahorro:           { cuentas: d.ahorro?.cuentas || 0,                 saldoTotal: d.ahorro?.saldoTotal || 0,        depositosHoy: d.ahorro?.depositosHoy || 0 },
+        clientes:         { total: d.clientes?.total || 0,                   nuevosHoy: 0 },
+      }))
+      .catch(() => {});
+  }, []);
 
   const navegar = (destino) => onNavigate && onNavigate(destino);
   const abrirPanel = (titulo, descripcion) => setPanel({ titulo, descripcion });
