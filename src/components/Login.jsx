@@ -190,9 +190,9 @@ export default function LoginPage() {
 
               <form onSubmit={handleLogin} noValidate className="form">
                 <div className="field">
-                  <label htmlFor="usuario">Usuario o cedula</label>
+                  <label htmlFor="usuario">Usuario o correo electrónico</label>
                   <input
-                    id="usuario" type="text" placeholder="Ingresa tu usuario"
+                    id="usuario" type="text" placeholder="usuario o correo@ejemplo.com"
                     value={form.usuario}
                     onChange={e => { setForm({ ...form, usuario: e.target.value }); setTouched(t => ({ ...t, usuario: true })); setErrorMsg(''); }}
                     onBlur={() => setTouched(t => ({ ...t, usuario: true }))}

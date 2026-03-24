@@ -90,11 +90,21 @@ export default function Dashboard() {
   const flyoutTimer = useRef(null);
   const [notifs,        setNotifs]        = useState([]);
 
-  const [profile, setProfile] = useState({ nombre: "Administrador", correo: "admin@fiem.com.mx", celular: "+52 55 1234 5678", nacimiento: "1985-06-15" });
-  const [form,    setForm]    = useState({ ...profile });
+  const [profile,    setProfile]    = useState({ nombre: "Administrador", correo: "admin@fiem.com.mx", celular: "", nacimiento: "" });
+  const [form,       setForm]       = useState({ ...profile, passwordActual: "", password: "", password2: "" });
+  const [profileErr, setProfileErr] = useState("");
+  const [showPw,     setShowPw]     = useState(false);
 
   const router = useRouter();
   const USUARIO = 'admin';
+
+  // Cargar perfil del backend
+  useEffect(() => {
+    fetch(`${API}/api/usuarios/${USUARIO}`)
+      .then(r => r.json())
+      .then(data => { if (data.nombre) { setProfile(data); setForm(f => ({ ...f, ...data, passwordActual: '', password: '', password2: '' })); } })
+      .catch(() => {});
+  }, []);
 
   // Cargar notificaciones del backend
   useEffect(() => {
@@ -136,8 +146,22 @@ export default function Dashboard() {
 
   const noLeidas = notifs.filter(n => !n.leida).length;
 
-  const openModal    = () => { setForm({ ...profile }); setShowDropdown(false); setShowModal(true); setSaved(false); };
-  const saveProfile  = () => { setProfile({ ...form }); setSaved(true); setTimeout(() => { setShowModal(false); setSaved(false); }, 1200); };
+  const openModal   = () => { setForm({ ...profile, passwordActual: '', password: '', password2: '' }); setProfileErr(''); setShowDropdown(false); setShowModal(true); setSaved(false); };
+  const saveProfile = async () => {
+    if (form.password && form.password !== form.password2) { setProfileErr('Las contraseñas no coinciden'); return; }
+    if (form.password && !form.passwordActual) { setProfileErr('Ingresa tu contraseña actual'); return; }
+    setProfileErr('');
+    try {
+      const body = { nombre: form.nombre, correo: form.correo, celular: form.celular, nacimiento: form.nacimiento };
+      if (form.password) { body.password = form.password; body.passwordActual = form.passwordActual; }
+      const res  = await fetch(`${API}/api/usuarios/${USUARIO}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) { setProfileErr(data.error || 'Error al guardar'); return; }
+      setProfile(data);
+      setSaved(true);
+      setTimeout(() => { setShowModal(false); setSaved(false); }, 1200);
+    } catch { setProfileErr('Error de conexión'); }
+  };
   const handleLogout = () => { setShowDropdown(false); setLoggingOut(true); sessionStorage.removeItem('fiem_login_notif_done'); setTimeout(() => router.push("/login"), 3000); };
   const toggle       = (i) => setOpenMenus(p => ({ ...p, [i]: !p[i] }));
   const handleNav    = (i) => { if (NAV[i].sub.length > 0) toggle(i); else { setActiveNav(i); setActiveSub(null); } };
@@ -641,22 +665,47 @@ export default function Dashboard() {
             <div className="m-body">
               <div>
                 <div className="m-lbl"><User size={12} /> Nombre completo</div>
-                <input className="m-inp" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Tu nombre" />
+                <input className="m-inp" value={form.nombre||''} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Tu nombre" />
               </div>
               <div>
-                <div className="m-lbl"><Mail size={12} /> Correo electronico</div>
-                <input className="m-inp" type="email" value={form.correo} onChange={e => setForm(p => ({ ...p, correo: e.target.value }))} />
+                <div className="m-lbl"><Mail size={12} /> Correo electrónico</div>
+                <input className="m-inp" type="email" value={form.correo||''} onChange={e => setForm(p => ({ ...p, correo: e.target.value }))} placeholder="correo@ejemplo.com" />
               </div>
               <div className="m-grid">
                 <div>
                   <div className="m-lbl"><PhoneIcon size={12} /> Celular</div>
-                  <input className="m-inp" type="tel" value={form.celular} onChange={e => setForm(p => ({ ...p, celular: e.target.value }))} />
+                  <input className="m-inp" type="tel" value={form.celular||''} onChange={e => setForm(p => ({ ...p, celular: e.target.value }))} />
                 </div>
                 <div>
                   <div className="m-lbl"><CalIcon size={12} /> Nacimiento</div>
-                  <input className="m-inp" type="date" value={form.nacimiento} onChange={e => setForm(p => ({ ...p, nacimiento: e.target.value }))} />
+                  <input className="m-inp" type="date" value={form.nacimiento||''} onChange={e => setForm(p => ({ ...p, nacimiento: e.target.value }))} />
                 </div>
               </div>
+              {/* Sección cambio de contraseña */}
+              <div style={{ borderTop:'1px solid #dceaf8', paddingTop:'16px' }}>
+                <div style={{ fontSize:'11px', fontWeight:'700', color:'#90aac8', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:'12px' }}>Cambiar contraseña (opcional)</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+                  <div>
+                    <div className="m-lbl">Contraseña actual</div>
+                    <input className="m-inp" type={showPw ? 'text' : 'password'} value={form.passwordActual||''} onChange={e => setForm(p => ({ ...p, passwordActual: e.target.value }))} placeholder="••••••••" />
+                  </div>
+                  <div className="m-grid">
+                    <div>
+                      <div className="m-lbl">Nueva contraseña</div>
+                      <input className="m-inp" type={showPw ? 'text' : 'password'} value={form.password||''} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} placeholder="••••••••" />
+                    </div>
+                    <div>
+                      <div className="m-lbl">Confirmar</div>
+                      <input className="m-inp" type={showPw ? 'text' : 'password'} value={form.password2||''} onChange={e => setForm(p => ({ ...p, password2: e.target.value }))} placeholder="••••••••" />
+                    </div>
+                  </div>
+                  <label style={{ display:'flex', alignItems:'center', gap:'8px', fontSize:'12px', color:'#4a6a94', cursor:'pointer' }}>
+                    <input type="checkbox" checked={showPw} onChange={e => setShowPw(e.target.checked)} style={{ accentColor:'#0e50a0' }} />
+                    Mostrar contraseñas
+                  </label>
+                </div>
+              </div>
+              {profileErr && <div style={{ background:'#fee2e2', border:'1px solid #fca5a5', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', color:'#dc2626', fontWeight:'600' }}>{profileErr}</div>}
             </div>
             <div className="m-footer">
               <button className="m-cancel" onClick={() => setShowModal(false)}>Cancelar</button>
