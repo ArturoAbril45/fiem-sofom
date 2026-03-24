@@ -1,20 +1,45 @@
 'use client';
+import { useState, useEffect } from 'react';
 import { Bell, DollarSign, Eye, TrendingUp, AlertCircle } from 'lucide-react';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://fiem-backend-production.up.railway.app';
 
 function formatMoney(n) {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(n || 0);
 }
 
-// Datos en cero hasta conectar backend
-const notificaciones = [];
-const cobranza = {
-  totalPagos: 0,
-  totalMonto: 0,
-  pagosFaltantes: 0,
-  montoFaltante: 0,
-};
+function fmtFecha(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+function fmtHora(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+}
 
 export default function Inicio({ onNavigate }) {
+  const [notificaciones, setNotificaciones] = useState([]);
+  const [cobranza,       setCobranza]       = useState({ totalPagos:0, totalMonto:0, pagosFaltantes:0, montoFaltante:0 });
+
+  useEffect(() => {
+    fetch(`${API}/api/notificaciones/admin`)
+      .then(r => r.json())
+      .then(data => setNotificaciones(Array.isArray(data) ? data : []))
+      .catch(() => {});
+
+    fetch(`${API}/api/resumen-dia`)
+      .then(r => r.json())
+      .then(data => setCobranza({
+        totalPagos:     data.cobranza?.totalPagos   || 0,
+        totalMonto:     data.cobranza?.totalMonto   || 0,
+        pagosFaltantes: data.cobranza?.faltanPagos  || 0,
+        montoFaltante:  data.cobranza?.faltanMonto  || 0,
+      }))
+      .catch(() => {});
+  }, []);
+
   return (
     <div style={{ maxWidth: '820px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
@@ -101,9 +126,9 @@ export default function Inicio({ onNavigate }) {
                 </tr>
               ) : notificaciones.map((n, i) => (
                 <tr key={i} style={{ borderTop: '1px solid #f0f6ff', background: i % 2 === 0 ? '#fff' : '#fafcff' }}>
-                  <td style={{ padding: '12px 20px', fontSize: '13px', color: '#4a6a94' }}>{n.fecha}</td>
-                  <td style={{ padding: '12px 20px', fontSize: '13px', color: '#4a6a94' }}>{n.hora}</td>
-                  <td style={{ padding: '12px 20px', fontSize: '13px', fontWeight: '600', color: '#0a2d5e' }}>{n.titulo}</td>
+                  <td style={{ padding: '12px 20px', fontSize: '13px', color: '#4a6a94' }}>{fmtFecha(n.createdAt)}</td>
+                  <td style={{ padding: '12px 20px', fontSize: '13px', color: '#4a6a94' }}>{fmtHora(n.createdAt)}</td>
+                  <td style={{ padding: '12px 20px', fontSize: '13px', fontWeight: '600', color: '#0a2d5e' }}>{n.titulo || n.mensaje}</td>
                   <td style={{ padding: '12px 20px' }}>
                     <button style={{ background: '#e8f2fc', border: 'none', borderRadius: '7px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#0e50a0', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <Eye size={12} /> Ver
