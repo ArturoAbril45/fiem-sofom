@@ -111,7 +111,7 @@ export default function Inicio({ onNavigate }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f4f8fd' }}>
-                {['Fecha', 'Hora', 'Titulo', 'Opciones'].map(h => (
+                {['Fecha', 'Hora', 'Titulo'].map(h => (
                   <th key={h} style={{ padding: '11px 20px', textAlign: 'left', fontSize: '11px', fontWeight: '700', color: '#90aac8', textTransform: 'uppercase', letterSpacing: '.07em' }}>{h}</th>
                 ))}
               </tr>
@@ -129,11 +129,7 @@ export default function Inicio({ onNavigate }) {
                   <td style={{ padding: '12px 20px', fontSize: '13px', color: '#4a6a94' }}>{fmtFecha(n.createdAt)}</td>
                   <td style={{ padding: '12px 20px', fontSize: '13px', color: '#4a6a94' }}>{fmtHora(n.createdAt)}</td>
                   <td style={{ padding: '12px 20px', fontSize: '13px', fontWeight: '600', color: '#0a2d5e' }}>{n.titulo || n.mensaje}</td>
-                  <td style={{ padding: '12px 20px' }}>
-                    <button style={{ background: '#e8f2fc', border: 'none', borderRadius: '7px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#0e50a0', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <Eye size={12} /> Ver
-                    </button>
-                  </td>
+                  <td />
                 </tr>
               ))}
             </tbody>
