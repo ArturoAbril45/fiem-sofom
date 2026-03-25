@@ -11,29 +11,110 @@ const fmtK = v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(
 const inp = { border:'1.5px solid #dceaf8', borderRadius:'9px', padding:'8px 12px', fontSize:'12px', fontFamily:'DM Sans,sans-serif', color:'#1a3d6e', outline:'none', background:'#fafcff', boxSizing:'border-box' };
 const lbl = t => <span style={{ fontSize:'11px', fontWeight:'600', color:'#4a6a94', marginRight:'6px' }}>{t}</span>;
 
+const RUTA_COLORS = ['#0e50a0','#059669','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#65a30d'];
+
 function MapaCobranza({ creditos }) {
-  const ref = useRef(null);
+  const ref     = useRef(null);
+  const mapRef  = useRef(null);
+  const markersRef = useRef([]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !ref.current || creditos.length === 0) return;
+    if (typeof window === 'undefined' || !ref.current) return;
     import('leaflet').then(L => {
-      if (ref.current._leaflet_id) return;
-      const map = L.map(ref.current).setView([19.83, -99.16], 10);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(map);
-      // Puntos simulados cerca del centro (sin coordenadas reales en el modelo)
-      const lats = [19.83, 19.91, 19.75, 20.08, 19.98, 19.70, 19.88, 20.01, 19.65, 19.79];
-      const lngs = [-99.16, -99.22, -99.10, -99.30, -99.18, -99.05, -99.35, -99.08, -99.25, -98.97];
-      creditos.slice(0, 30).forEach((_, i) => {
-        const lat = lats[i % lats.length] + (Math.random() - 0.5) * 0.15;
-        const lng = lngs[i % lngs.length] + (Math.random() - 0.5) * 0.15;
-        L.marker([lat, lng]).addTo(map);
+      // CSS de Leaflet
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+
+      if (!mapRef.current) {
+        mapRef.current = L.map(ref.current, { zoomControl: true, attributionControl: false }).setView([19.83, -99.16], 10);
+        // Tile oscuro y moderno
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+          maxZoom: 19,
+        }).addTo(mapRef.current);
+        L.control.attribution({ prefix: '© CartoDB © OSM' }).addTo(mapRef.current);
+      }
+
+      // Limpiar marcadores anteriores
+      markersRef.current.forEach(m => m.remove());
+      markersRef.current = [];
+
+      if (creditos.length === 0) return;
+
+      // Rutas únicas → color
+      const rutas = [...new Set(creditos.map(c => c.ruta || 'Sin ruta'))];
+      const rutaColor = Object.fromEntries(rutas.map((r, i) => [r, RUTA_COLORS[i % RUTA_COLORS.length]]));
+
+      const lats = [19.83,19.91,19.75,20.08,19.98,19.70,19.88,20.01,19.65,19.79,19.55,19.62,19.72,19.95,20.12];
+      const lngs = [-99.16,-99.22,-99.10,-99.30,-99.18,-99.05,-99.35,-99.08,-99.25,-98.97,-99.40,-98.90,-99.55,-98.80,-99.20];
+
+      creditos.slice(0, 40).forEach((c, i) => {
+        const lat   = lats[i % lats.length] + (Math.random() - 0.5) * 0.18;
+        const lng   = lngs[i % lngs.length] + (Math.random() - 0.5) * 0.18;
+        const ruta  = c.ruta || 'Sin ruta';
+        const color = rutaColor[ruta];
+
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="
+            width:32px;height:32px;
+            background:${color};
+            border:3px solid #fff;
+            border-radius:50% 50% 50% 0;
+            transform:rotate(-45deg);
+            box-shadow:0 3px 10px rgba(0,0,0,0.35);
+            cursor:pointer;
+            transition:transform .2s;
+          "></div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+          popupAnchor: [0, -34],
+        });
+
+        const marker = L.marker([lat, lng], { icon })
+          .bindPopup(`
+            <div style="font-family:DM Sans,sans-serif;min-width:180px">
+              <div style="font-weight:700;color:#0a2d5e;font-size:13px;margin-bottom:4px">${c.clienteNombre || '—'}</div>
+              <div style="font-size:11px;color:#4a6a94;margin-bottom:2px">📍 Ruta: <b>${ruta}</b></div>
+              <div style="font-size:11px;color:#4a6a94;margin-bottom:2px">💳 Folio: <b>${c.folio || '—'}</b></div>
+              <div style="font-size:11px;color:#059669;font-weight:700">Saldo: $${Number(c.saldo||0).toLocaleString('es-MX')}</div>
+            </div>
+          `, { maxWidth: 220 })
+          .addTo(mapRef.current);
+        markersRef.current.push(marker);
       });
+
+      // Leyenda de rutas
+      const legend = L.control({ position: 'bottomright' });
+      legend.onAdd = () => {
+        const div = L.DomUtil.create('div');
+        div.innerHTML = `<div style="background:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.15);font-family:DM Sans,sans-serif;font-size:11px;max-width:160px">
+          <b style="color:#0a2d5e;display:block;margin-bottom:6px">Rutas</b>
+          ${rutas.slice(0,8).map(r => `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+            <span style="width:10px;height:10px;border-radius:50%;background:${rutaColor[r]};flex-shrink:0"></span>
+            <span style="color:#4a6a94;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">${r}</span>
+          </div>`).join('')}
+        </div>`;
+        return div;
+      };
+      legend.addTo(mapRef.current);
     });
   }, [creditos]);
 
-  return <div ref={ref} style={{ height:'380px', borderRadius:'16px', overflow:'hidden', border:'1px solid #dceaf8' }} />;
+  return (
+    <div style={{ position:'relative' }}>
+      <div ref={ref} style={{ height:'440px', borderRadius:'16px', overflow:'hidden', border:'1px solid #dceaf8', boxShadow:'0 4px 20px rgba(14,80,160,0.1)' }} />
+      {creditos.length === 0 && (
+        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(244,248,253,0.85)', borderRadius:'16px' }}>
+          <span style={{ fontSize:'13px', color:'#90aac8' }}>Consulta para ver los puntos en el mapa</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ReporteCobranzaDia() {
