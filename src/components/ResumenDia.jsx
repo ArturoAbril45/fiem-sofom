@@ -88,47 +88,54 @@ export default function ResumenDia({ onNavigate }) {
         </div>
       </div>
 
+      {/* Cartera */}
+      <div style={{ ...card, marginBottom:'20px', textAlign:'center', display:'block' }}>
+        <div style={{ fontSize:'13px', fontWeight:'600', color:'#0a2d5e', marginBottom:'10px' }}>Valor de tu cartera de creditos</div>
+        <p style={txt}>-Valor de interes actual: <strong style={{ color:'#0e50a0' }}>{formatMoney(data.cartera.interes)} pesos</strong></p>
+        <p style={txt}>-Valor de capital actual: <strong style={{ color:'#0e50a0' }}>{formatMoney(data.cartera.capital)} pesos</strong></p>
+        <p style={{ ...txt, marginBottom:'16px' }}>-Valor general de la cartera: <strong style={{ color:'#0e50a0' }}>{formatMoney(data.cartera.total)} pesos</strong></p>
+        <button onClick={() => navegar('Valor de cartera')} style={{ ...btn('#0891b2'), width:'auto', padding:'9px 24px', display:'inline-flex' }}>Consultar valor de cartera</button>
+      </div>
+
       {/* Grid 4 cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px', marginBottom: '20px' }}>
 
-        {/* Cobranza del dia — tiene módulo */}
+        {/* Cobranza */}
         <div style={card}>
           <Wallet size={22} color="#0e50a0" style={{ marginBottom: '10px' }} />
           <h3 style={cardTitle}>Cobranza de hoy</h3>
-          <p style={txt}>Hay <strong>{data.cobranza.totalPagos}</strong> pagos para hoy que suman <strong style={{ color: '#0e50a0' }}>{formatMoney(data.cobranza.totalMonto)}</strong></p>
-          <p style={{ ...txt, marginBottom: '18px' }}>Faltan <strong>{data.cobranza.faltanPagos}</strong> pagos que suman <strong style={{ color: '#dc2626' }}>{formatMoney(data.cobranza.faltanMonto)}</strong></p>
-          <button onClick={() => navegar('Cobranza del dia')} style={btn('#0e50a0')}>Ver cobranza hoy</button>
+          <p style={txt}>Hay <strong>{data.cobranza.totalPagos}</strong> pagos para hoy que suman un total de <strong style={{ color: '#0e50a0' }}>{formatMoney(data.cobranza.totalMonto)}</strong> pesos</p>
+          <p style={txt}>de estos te faltan un total de <strong>{data.cobranza.faltanPagos}</strong> pagos que suman <strong style={{ color: '#dc2626' }}>{formatMoney(data.cobranza.faltanMonto)}</strong> pesos</p>
+          <button onClick={() => navegar('Cobranza del dia')} style={{ ...btn('#0e50a0'), marginTop:'auto' }}>Ver cobranza hoy</button>
         </div>
 
-        {/* Pagos vencidos — tiene módulo */}
+        {/* Pagos vencidos */}
         <div style={card}>
           <AlertCircle size={22} color="#dc2626" style={{ marginBottom: '10px' }} />
           <h3 style={cardTitle}>Pagos vencidos</h3>
-          <p style={txt}><strong style={{ color: '#dc2626' }}>{data.pagosVencidos.creditosAtraso}</strong> creditos con atrasos</p>
-          <p style={txt}><strong>{data.pagosVencidos.pagosVencidos}</strong> pagos vencidos</p>
-          <p style={{ ...txt, marginBottom: '18px' }}>Suman <strong style={{ color: '#dc2626' }}>{formatMoney(data.pagosVencidos.montoVencido)}</strong></p>
-          <button onClick={() => navegar('Abonos vencidos')} style={btn('#dc2626')}>Ver pagos vencidos</button>
+          <p style={txt}>Tu cartera vencida es la siguiente:</p>
+          <p style={txt}>- <strong style={{ color: '#dc2626' }}>{data.pagosVencidos.creditosAtraso}</strong> creditos que presentan atrasos</p>
+          <p style={txt}>- <strong>{data.pagosVencidos.pagosVencidos}</strong> Pagos vencidos</p>
+          <p style={txt}>- Que suman una cantidad de <strong style={{ color: '#dc2626' }}>{formatMoney(data.pagosVencidos.montoVencido)}</strong> pesos</p>
+          <button onClick={() => navegar('Abonos vencidos')} style={{ ...btn('#dc2626'), marginTop:'auto' }}>Ver pagos vencidos</button>
         </div>
 
-        {/* Creditos vigentes — tiene módulo */}
+        {/* Creditos vigentes */}
         <div style={card}>
           <CreditCard size={22} color="#0891b2" style={{ marginBottom: '10px' }} />
-          <h3 style={cardTitle}>Creditos vigentes</h3>
-          <p style={{ color: '#90aac8', fontSize: '13px', margin: '0 0 4px 0' }}>Creditos activos actualmente</p>
-          <div style={kpi('#0e50a0')}>{data.creditosVigentes.total}</div>
-          <button onClick={() => navegar('Consultar credito')} style={btn('#0891b2')}>Ver creditos</button>
+          <h3 style={cardTitle}>Creditos Vigentes</h3>
+          <p style={txt}>Tienes <strong style={{ color: '#0e50a0' }}>{data.creditosVigentes.total}</strong> creditos vigentes actuales</p>
+          <button onClick={() => navegar('Consultar credito')} style={{ ...btn('#0891b2'), marginTop:'auto' }}>Ver creditos</button>
         </div>
 
-        {/* Nuevos creditos — navega a Reporte cartera credito */}
+        {/* Nuevos creditos */}
         <div style={card}>
           <TrendingUp size={22} color="#059669" style={{ marginBottom: '10px' }} />
-          <h3 style={cardTitle}>Nuevos creditos hoy</h3>
-          <p style={txt}><strong>{data.nuevosCreditos.cantidad}</strong> creditos nuevos hoy</p>
-          <p style={txt}>Capital prestado: <strong style={{ color: '#0e50a0' }}>{formatMoney(data.nuevosCreditos.capitalPrestado)}</strong></p>
-          <p style={{ ...txt, marginBottom: '18px' }}>Interes ordinario: <strong style={{ color: '#059669' }}>{formatMoney(data.nuevosCreditos.interesOrdinario)}</strong></p>
-          <button onClick={() => navegar('Cartera de creditos')} style={btn('#059669')}>
-            Ver detalle
-          </button>
+          <h3 style={cardTitle}>Nuevos creditos colocados</h3>
+          <p style={txt}>Tienes <strong>{data.nuevosCreditos.cantidad}</strong> creditos nuevos el dia de hoy</p>
+          <p style={txt}>Suman un capital prestado de <strong style={{ color: '#0e50a0' }}>{formatMoney(data.nuevosCreditos.capitalPrestado)}</strong> Pesos</p>
+          <p style={txt}>Que generaron un interes ordinario de <strong style={{ color: '#059669' }}>{formatMoney(data.nuevosCreditos.interesOrdinario)}</strong> Pesos</p>
+          <button onClick={() => navegar('Cartera de creditos')} style={{ ...btn('#059669'), marginTop:'auto' }}>Ver creditos</button>
         </div>
 
       </div>
