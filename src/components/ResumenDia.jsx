@@ -68,7 +68,7 @@ export default function ResumenDia({ onNavigate }) {
   const navegar = (destino) => onNavigate && onNavigate(destino);
   const abrirPanel = (titulo, descripcion) => setPanel({ titulo, descripcion });
 
-  const card = { backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 12px rgba(14,80,160,0.06)', border: '1px solid #dceaf8' };
+  const card = { backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 12px rgba(14,80,160,0.06)', border: '1px solid #dceaf8', display: 'flex', flexDirection: 'column' };
   const btn = (color = '#0e50a0') => ({ backgroundColor: color, color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 0', fontSize: '13px', fontWeight: '600', cursor: 'pointer', width: '100%', fontFamily: 'DM Sans, sans-serif', boxShadow: `0 4px 12px ${color}44` });
   const cardTitle = { fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '700', color: '#0a2d5e', margin: '0 0 12px 0' };
   const txt = { color: '#4a6a94', fontSize: '13px', margin: '0 0 5px 0', lineHeight: '1.6' };
@@ -86,30 +86,6 @@ export default function ResumenDia({ onNavigate }) {
         <div style={{ color: '#90aac8', fontSize: '12px' }}>
           {new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
-      </div>
-
-      {/* Cartera principal — card grande */}
-      <div style={{ ...card, marginBottom: '20px', textAlign: 'center' }}>
-        <DollarSign size={26} color="#0e50a0" style={{ marginBottom: '10px' }} />
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '20px', fontWeight: '700', color: '#0a2d5e', marginBottom: '20px' }}>
-          Valor de tu cartera de creditos
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '48px', flexWrap: 'wrap', marginBottom: '22px' }}>
-          {[
-            { label: 'Valor de interes actual',     value: formatMoney(data.cartera.interes), color: '#0a2d5e' },
-            { label: 'Valor de capital actual',     value: formatMoney(data.cartera.capital), color: '#0a2d5e' },
-            { label: 'Valor general de la cartera', value: formatMoney(data.cartera.total),   color: '#0e50a0' },
-          ].map(({ label, value, color }) => (
-            <div key={label}>
-              <div style={{ color: '#90aac8', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '6px' }}>{label}</div>
-              <div style={{ color, fontSize: '22px', fontWeight: '700', fontFamily: "'Cormorant Garamond', serif" }}>{value}</div>
-            </div>
-          ))}
-        </div>
-        {/* navega a Valor de cartera (Reportes) */}
-        <button onClick={() => navegar('Valor de cartera')} style={{ ...btn(), width: 'auto', padding: '10px 28px' }}>
-          Consultar valor de cartera
-        </button>
       </div>
 
       {/* Grid 4 cards */}
@@ -157,49 +133,6 @@ export default function ResumenDia({ onNavigate }) {
 
       </div>
 
-      {/* Segunda fila */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px' }}>
-
-        {/* Ahorro — panel embebido (resumen general) */}
-        <div style={card}>
-          <PiggyBank size={22} color="#0891b2" style={{ marginBottom: '10px' }} />
-          <h3 style={cardTitle}>Ahorro</h3>
-          <p style={txt}><strong>{data.ahorro.cuentas}</strong> cuentas activas</p>
-          <p style={txt}>Saldo total: <strong style={{ color: '#0891b2' }}>{formatMoney(data.ahorro.saldoTotal)}</strong></p>
-          <p style={{ ...txt, marginBottom: '18px' }}>Depositos hoy: <strong style={{ color: '#059669' }}>{formatMoney(data.ahorro.depositosHoy)}</strong></p>
-          <button onClick={() => navegar('Consulta cuenta ahorro')} style={btn('#0891b2')}>Ver cuentas</button>
-        </div>
-
-        {/* Clientes — tiene módulo */}
-        <div style={card}>
-          <Users size={22} color="#0e50a0" style={{ marginBottom: '10px' }} />
-          <h3 style={cardTitle}>Clientes</h3>
-          <p style={{ color: '#90aac8', fontSize: '13px', margin: '0 0 4px 0' }}>Total de clientes registrados</p>
-          <div style={kpi('#0e50a0')}>{data.clientes.total}</div>
-          <p style={{ ...txt, marginBottom: '18px' }}>Nuevos hoy: <strong>{data.clientes.nuevosHoy}</strong></p>
-          <button onClick={() => navegar('Consultar cliente')} style={btn('#0e50a0')}>Ver clientes</button>
-        </div>
-
-        {/* Cobros del dia — tiene módulo */}
-        <div style={card}>
-          <DollarSign size={22} color="#059669" style={{ marginBottom: '10px' }} />
-          <h3 style={cardTitle}>Cobros realizados hoy</h3>
-          <p style={{ color: '#90aac8', fontSize: '13px', margin: '0 0 4px 0' }}>Total cobrado en el dia</p>
-          <div style={kpi('#059669')}>{formatMoney(0)}</div>
-          <button onClick={() => navegar('Cobros de credito')} style={btn('#059669')}>Ver cobros</button>
-        </div>
-
-        {/* Promesas de pago — tiene módulo */}
-        <div style={card}>
-          <AlertCircle size={22} color="#f59e0b" style={{ marginBottom: '10px' }} />
-          <h3 style={cardTitle}>Promesas de pago</h3>
-          <p style={txt}>Pendientes: <strong style={{ color: '#f59e0b' }}>0</strong></p>
-          <p style={txt}>Vencen hoy: <strong style={{ color: '#dc2626' }}>0</strong></p>
-          <p style={{ ...txt, marginBottom: '18px' }}>Cumplidas: <strong style={{ color: '#059669' }}>0</strong></p>
-          <button onClick={() => navegar('Promesas de pago')} style={btn('#f59e0b')}>Ver promesas</button>
-        </div>
-
-      </div>
 
       {/* Panel modal para secciones sin módulo */}
       {panel && (
