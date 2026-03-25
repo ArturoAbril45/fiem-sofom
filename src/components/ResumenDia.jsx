@@ -143,16 +143,14 @@ export default function ResumenDia({ onNavigate }) {
           <button onClick={() => navegar('Consultar credito')} style={btn('#0891b2')}>Ver creditos</button>
         </div>
 
-        {/* Nuevos creditos — panel embebido (no hay módulo de "nuevos hoy") */}
+        {/* Nuevos creditos — navega a Reporte cartera credito */}
         <div style={card}>
           <TrendingUp size={22} color="#059669" style={{ marginBottom: '10px' }} />
           <h3 style={cardTitle}>Nuevos creditos hoy</h3>
           <p style={txt}><strong>{data.nuevosCreditos.cantidad}</strong> creditos nuevos hoy</p>
           <p style={txt}>Capital prestado: <strong style={{ color: '#0e50a0' }}>{formatMoney(data.nuevosCreditos.capitalPrestado)}</strong></p>
           <p style={{ ...txt, marginBottom: '18px' }}>Interes ordinario: <strong style={{ color: '#059669' }}>{formatMoney(data.nuevosCreditos.interesOrdinario)}</strong></p>
-          <button
-            onClick={() => abrirPanel('Nuevos creditos colocados hoy', 'Muestra los creditos aperturados en el dia de hoy, el capital prestado y el interes ordinario generado. Conecta el backend para ver este detalle en tiempo real.')}
-            style={btn('#059669')}>
+          <button onClick={() => navegar('Cartera de creditos')} style={btn('#059669')}>
             Ver detalle
           </button>
         </div>
